@@ -104,14 +104,14 @@ int main(void) {
     MX_ADC3_Init();
     /* USER CODE BEGIN 2 */
     init_display();
+    test_display();
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        lv_timer_handler();
-        HAL_Delay(5);
-        lv_tick_inc(5);
+        // lv_timer_handler();
+        // lv_tick_inc(5);
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
