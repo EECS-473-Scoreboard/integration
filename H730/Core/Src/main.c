@@ -23,11 +23,12 @@
 #include "ltdc.h"
 #include "sai.h"
 #include "sdmmc.h"
+#include "stm32h7xx_hal.h"
 #include "usart.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "lcd.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,12 +101,15 @@ int main(void) {
     MX_UART7_Init();
     MX_USART3_UART_Init();
     /* USER CODE BEGIN 2 */
-
+    init_display();
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
+        lv_timer_handler();
+        HAL_Delay(5);
+        lv_tick_inc(5);
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
