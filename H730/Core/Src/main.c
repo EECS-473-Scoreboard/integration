@@ -22,7 +22,6 @@
 #include "gpio.h"
 #include "ltdc.h"
 #include "sai.h"
-#include "sdmmc.h"
 #include "usart.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -97,7 +96,6 @@ int main(void) {
     MX_GPIO_Init();
     MX_ADC1_Init();
     MX_LTDC_Init();
-    MX_SDMMC1_SD_Init();
     MX_UART4_Init();
     MX_UART5_Init();
     MX_SAI4_Init();
