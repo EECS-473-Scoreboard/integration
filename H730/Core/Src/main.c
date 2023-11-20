@@ -104,14 +104,17 @@ int main(void) {
     MX_ADC3_Init();
     /* USER CODE BEGIN 2 */
     init_display();
-    test_display();
+    lv_obj_t *label = lv_label_create(lv_scr_act());
+    lv_label_set_text(label, "Hello, World!");
+    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        // lv_timer_handler();
-        // lv_tick_inc(5);
+        lv_timer_handler();
+        HAL_Delay(5);
+        lv_tick_inc(5);
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */

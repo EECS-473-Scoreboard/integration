@@ -40,15 +40,15 @@ void init_display() {
 
     HAL_GPIO_WritePin(LCD_EN_PORT, LCD_EN_PIN, GPIO_PIN_SET);
 
-    // lv_init();
-    // lv_disp_draw_buf_init(&lvgl_buf, draw_buf, NULL,
-    //                       LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT / 10);
-    // lv_disp_drv_init(&lvgl_disp_drv);
-    // lvgl_disp_drv.flush_cb = flush_cb;
-    // lvgl_disp_drv.draw_buf = &lvgl_buf;
-    // lvgl_disp_drv.hor_res = LCD_RENDER_WIDTH;
-    // lvgl_disp_drv.ver_res = LCD_RENDER_HEIGHT;
-    // lv_disp_drv_register(&lvgl_disp_drv);
+    lv_init();
+    lv_disp_draw_buf_init(&lvgl_buf, draw_buf, NULL,
+                          LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT / 10);
+    lv_disp_drv_init(&lvgl_disp_drv);
+    lvgl_disp_drv.flush_cb = flush_cb;
+    lvgl_disp_drv.draw_buf = &lvgl_buf;
+    lvgl_disp_drv.hor_res = LCD_RENDER_WIDTH;
+    lvgl_disp_drv.ver_res = LCD_RENDER_HEIGHT;
+    lv_disp_drv_register(&lvgl_disp_drv);
 }
 
 void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
