@@ -21,9 +21,6 @@ TickType_t time_of_last_button_press = 0;
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
 static void ble_spp_server_advertise(void);
 static uint8_t own_addr_type;
-QueueHandle_t interputQueue;
-int gatt_svr_register(void);
-QueueHandle_t spp_common_uart_queue = NULL;
 static bool conn_handle_subs[CONFIG_BT_NIMBLE_MAX_CONNECTIONS + 1];
 static uint16_t ble_spp_svc_gatt_read_val_handle;
 
@@ -36,74 +33,7 @@ esp_err_t example_register_gpio_wakeup() {
     return ESP_OK;
 }
 
-/*static void IRAM_ATTR gpio_interrupt_handler(void *args)
-{
-
-    int pinNumber = (int)args;
-
-    TickType_t currentTime= xTaskGetTickCount();
-    if(currentTime > time_of_last_button_press + 300/portTICK_PERIOD_MS ){
-        time_of_last_button_press = currentTime;
-        xQueueSendFromISR(interputQueue, &pinNumber, NULL);
-    }
-     //xQueueSendFromISR(interputQueue, &pinNumber, NULL);
-}*/
-void nameControl(void *params) {
-
-    for (;;) {
-        TickType_t currentTime = xTaskGetTickCount();
-        if (currentTime >
-            time_of_last_button_press + 300 / portTICK_PERIOD_MS) {
-            time_of_last_button_press = currentTime;
-            printf("Entering light sleep!\n");
-            uart_wait_tx_idle_polling(CONFIG_ESP_CONSOLE_UART_NUM);
-            esp_light_sleep_start();
-            printf("YOU WOKE UP\n");
-            if (count <= 9) {
-                char newString[40];
-                snprintf(newString, sizeof(newString), "nimbleServer_%d1",
-                         count);
-                int ret = ble_svc_gap_device_name_set(newString);
-                assert(ret == 0);
-                ble_spp_server_advertise();
-                printf("name changed\n");
-                vTaskDelay(20 / portTICK_PERIOD_MS);
-                ble_gap_adv_stop();
-            }
-            count++;
-            if (count > 9) {
-                count = 2;
-            }
-        }
-        vTaskDelete(NULL);
-    }
-}
-
 void ble_store_config_init(void);
-
-/**
- * Logs information about a connection to the console.
- */
-static void ble_spp_server_print_conn_desc(struct ble_gap_conn_desc *desc) {
-    MODLOG_DFLT(INFO, "handle=%d our_ota_addr_type=%d our_ota_addr=",
-                desc->conn_handle, desc->our_ota_addr.type);
-    print_addr(desc->our_ota_addr.val);
-    MODLOG_DFLT(INFO,
-                " our_id_addr_type=%d our_id_addr=", desc->our_id_addr.type);
-    print_addr(desc->our_id_addr.val);
-    MODLOG_DFLT(INFO, " peer_ota_addr_type=%d peer_ota_addr=",
-                desc->peer_ota_addr.type);
-    print_addr(desc->peer_ota_addr.val);
-    MODLOG_DFLT(INFO,
-                " peer_id_addr_type=%d peer_id_addr=", desc->peer_id_addr.type);
-    print_addr(desc->peer_id_addr.val);
-    MODLOG_DFLT(INFO,
-                " conn_itvl=%d conn_latency=%d supervision_timeout=%d "
-                "encrypted=%d authenticated=%d bonded=%d\n",
-                desc->conn_itvl, desc->conn_latency, desc->supervision_timeout,
-                desc->sec_state.encrypted, desc->sec_state.authenticated,
-                desc->sec_state.bonded);
-}
 
 /**
  * Enables advertising with the following parameters:
@@ -166,120 +96,13 @@ static void ble_spp_server_advertise(void) {
     }
 }
 
-/**
- * The nimble host executes this callback when a GAP event occurs.  The
- * application associates a GAP event callback with each connection that forms.
- * ble_spp_server uses the same callback for all connections.
- *
- * @param event                 The type of event being signalled.
- * @param ctxt                  Various information pertaining to the event.
- * @param arg                   Application-specified argument; unused by
- *                                  ble_spp_server.
- *
- * @return                      0 if the application successfully handled the
- *                                  event; nonzero on failure.  The semantics
- *                                  of the return code is specific to the
- *                                  particular GAP event being signalled.
- */
+// we do not care events resulted from a round of advertising
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg) {
-    struct ble_gap_conn_desc desc;
-    int rc;
-
-    switch (event->type) {
-    case BLE_GAP_EVENT_CONNECT:
-        /* A new connection was established or a connection attempt failed. */
-        MODLOG_DFLT(INFO, "connection %s; status=%d ",
-                    event->connect.status == 0 ? "established" : "failed",
-                    event->connect.status);
-        if (event->connect.status == 0) {
-            rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
-            assert(rc == 0);
-            ble_spp_server_print_conn_desc(&desc);
-        }
-        MODLOG_DFLT(INFO, "\n");
-        if (event->connect.status != 0 ||
-            CONFIG_BT_NIMBLE_MAX_CONNECTIONS > 1) {
-            /* Connection failed or if multiple connection allowed; resume
-             * advertising. */
-            ble_spp_server_advertise();
-        }
-        return 0;
-
-    case BLE_GAP_EVENT_DISCONNECT:
-        MODLOG_DFLT(INFO, "disconnect; reason=%d ", event->disconnect.reason);
-        ble_spp_server_print_conn_desc(&event->disconnect.conn);
-        MODLOG_DFLT(INFO, "\n");
-
-        conn_handle_subs[event->disconnect.conn.conn_handle] = false;
-
-        /* Connection terminated; resume advertising. */
-        ble_spp_server_advertise();
-        return 0;
-
-    case BLE_GAP_EVENT_CONN_UPDATE:
-        /* The central has updated the connection parameters. */
-        MODLOG_DFLT(INFO, "connection updated; status=%d ",
-                    event->conn_update.status);
-        rc = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
-        assert(rc == 0);
-        ble_spp_server_print_conn_desc(&desc);
-        MODLOG_DFLT(INFO, "\n");
-        return 0;
-
-    case BLE_GAP_EVENT_ADV_COMPLETE:
-        MODLOG_DFLT(INFO, "advertise complete; reason=%d",
-                    event->adv_complete.reason);
-        ble_spp_server_advertise();
-        return 0;
-
-    case BLE_GAP_EVENT_MTU:
-        MODLOG_DFLT(INFO, "mtu update event; conn_handle=%d cid=%d mtu=%d\n",
-                    event->mtu.conn_handle, event->mtu.channel_id,
-                    event->mtu.value);
-        return 0;
-
-    case BLE_GAP_EVENT_SUBSCRIBE:
-        MODLOG_DFLT(INFO,
-                    "subscribe event; conn_handle=%d attr_handle=%d "
-                    "reason=%d prevn=%d curn=%d previ=%d curi=%d\n",
-                    event->subscribe.conn_handle, event->subscribe.attr_handle,
-                    event->subscribe.reason, event->subscribe.prev_notify,
-                    event->subscribe.cur_notify, event->subscribe.prev_indicate,
-                    event->subscribe.cur_indicate);
-        conn_handle_subs[event->subscribe.conn_handle] = true;
-        return 0;
-
-    default:
-        return 0;
-    }
+    return 0;
 }
 
 static void ble_spp_server_on_reset(int reason) {
     MODLOG_DFLT(ERROR, "Resetting state; reason=%d\n", reason);
-}
-
-static void ble_spp_server_on_sync(void) {
-    int rc;
-
-    rc = ble_hs_util_ensure_addr(0);
-    assert(rc == 0);
-
-    /* Figure out address to use while advertising (no privacy for now) */
-    rc = ble_hs_id_infer_auto(0, &own_addr_type);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "error determining address type; rc=%d\n", rc);
-        return;
-    }
-
-    /* Printing ADDR */
-    uint8_t addr_val[6] = {0};
-    rc = ble_hs_id_copy_addr(own_addr_type, addr_val, NULL);
-
-    MODLOG_DFLT(INFO, "Device Address: ");
-    print_addr(addr_val);
-    MODLOG_DFLT(INFO, "\n");
-    /* Begin advertising. */
-    ble_spp_server_advertise();
 }
 
 void ble_spp_server_host_task(void *param) {
@@ -387,70 +210,28 @@ int gatt_svr_init(void) {
     return 0;
 }
 
-void ble_server_uart_task(void *pvParameters) {
-    MODLOG_DFLT(INFO, "BLE server UART_task started\n");
-    uart_event_t event;
-    int rc = 0;
-    for (;;) {
-        // Waiting for UART event.
-        if (xQueueReceive(spp_common_uart_queue, (void *)&event,
-                          (TickType_t)portMAX_DELAY)) {
-            switch (event.type) {
-            // Event of UART receving data
-            case UART_DATA:
-                if (event.size) {
-                    uint8_t *ntf;
-                    ntf = (uint8_t *)malloc(sizeof(uint8_t) * event.size);
-                    memset(ntf, 0x00, event.size);
-                    uart_read_bytes(UART_NUM_0, ntf, event.size, portMAX_DELAY);
-
-                    for (int i = 0; i <= CONFIG_BT_NIMBLE_MAX_CONNECTIONS;
-                         i++) {
-                        /* Check if client has subscribed to notifications */
-                        if (conn_handle_subs[i]) {
-                            struct os_mbuf *txom;
-                            txom = ble_hs_mbuf_from_flat(ntf, sizeof(ntf));
-                            rc = ble_gatts_notify_custom(
-                                i, ble_spp_svc_gatt_read_val_handle, txom);
-                            if (rc == 0) {
-                                MODLOG_DFLT(INFO,
-                                            "Notification sent successfully");
-                            } else {
-                                MODLOG_DFLT(
-                                    INFO,
-                                    "Error in sending notification rc = %d",
-                                    rc);
-                            }
-                        }
-                    }
-                }
-                break;
-            default:
-                break;
-            }
-        }
+static void main_poll() {
+    printf("Entering light sleep!\n");
+    uart_wait_tx_idle_polling(CONFIG_ESP_CONSOLE_UART_NUM);
+    esp_light_sleep_start();
+    printf("YOU WOKE UP\n");
+    if (count <= 9) {
+        char newString[40];
+        snprintf(newString, sizeof(newString), "nimbleServer_%d1", count);
+        int ret = ble_svc_gap_device_name_set(newString);
+        assert(ret == 0);
+        ble_spp_server_advertise();
+        printf("name changed\n");
+        vTaskDelay(20 / portTICK_PERIOD_MS);
+        ble_gap_adv_stop();
     }
-    vTaskDelete(NULL);
-}
-static void ble_spp_uart_init(void) {
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_RTS,
-        .rx_flow_ctrl_thresh = 122,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-    // Install UART driver, and get the queue.
-    uart_driver_install(UART_NUM_0, 4096, 8192, 10, &spp_common_uart_queue, 0);
-    // Set UART parameters
-    uart_param_config(UART_NUM_0, &uart_config);
-    // Set UART pins
-    uart_set_pin(UART_NUM_0, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE,
-                 UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    xTaskCreate(ble_server_uart_task, "uTask", 4096, (void *)UART_NUM_0, 8,
-                NULL);
+    count++;
+    if (count > 9) {
+        count = 2;
+    }
+
+    while (gpio_get_level(INPUT_PIN))
+        ;
 }
 
 void app_main(void) {
@@ -479,9 +260,6 @@ void app_main(void) {
     for (int i = 0; i <= CONFIG_BT_NIMBLE_MAX_CONNECTIONS; i++) {
         conn_handle_subs[i] = false;
     }
-
-    /* Initialize uart driver and start uart task */
-    ble_spp_uart_init();
 
     /* Initialize the NimBLE host configuration. */
     ble_hs_cfg.reset_cb = ble_spp_server_on_reset;
@@ -515,20 +293,9 @@ void app_main(void) {
     esp_err_t err = example_register_gpio_wakeup();
     assert(err == ESP_OK);
 
-    // interputQueue = xQueueCreate(10, sizeof(int));
-
     ble_store_config_init();
     nimble_port_freertos_init(ble_spp_server_host_task);
     while (1) {
-        vTaskDelay(1);
-        xTaskCreate(nameControl, "nameControl", 4096, NULL, 1, NULL);
+        main_poll();
     }
-
-    // gpio_install_isr_service(0);
-    // gpio_isr_handler_add(INPUT_PIN, gpio_interrupt_handler, (void
-    // *)INPUT_PIN);
-
-    /* Set the default device name. */
-
-    /* XXX Need to have template for store */
 }
