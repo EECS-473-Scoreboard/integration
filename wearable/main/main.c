@@ -17,6 +17,7 @@
 
 #define INPUT_PIN 23
 
+RTC_DATA_ATTR int rf_calib_skipped = 0;
 int count = 1;
 
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
@@ -128,6 +129,10 @@ static void main_poll() {
 }
 
 void app_main(void) {
+    if (rf_calib_skipped++ == 0) {
+        esp_deep_sleep(5000);
+    }
+
     gpio_reset_pin(INPUT_PIN);
     gpio_set_direction(INPUT_PIN, GPIO_MODE_INPUT);
     gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_HIGH_LEVEL);
