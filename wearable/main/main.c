@@ -1,5 +1,6 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
+
 /* BLE */
 #include "ble_spp_server.h"
 #include "console/console.h"
@@ -13,27 +14,15 @@
 #include "nimble/nimble_port_freertos.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
+
 #define INPUT_PIN 23
+
 int state = 0;
 int count = 1;
-static const char *TAG = "gpio_wakeup";
-TickType_t time_of_last_button_press = 0;
+
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
 static void ble_spp_server_advertise(void);
 static uint8_t own_addr_type;
-static bool conn_handle_subs[CONFIG_BT_NIMBLE_MAX_CONNECTIONS + 1];
-static uint16_t ble_spp_svc_gatt_read_val_handle;
-
-esp_err_t example_register_gpio_wakeup() {
-    ESP_RETURN_ON_ERROR(gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_HIGH_LEVEL),
-                        TAG, "Enable gpio wakeup failed");
-    ESP_RETURN_ON_ERROR(esp_sleep_enable_gpio_wakeup(), TAG,
-                        "Configure gpio as wakeup source failed");
-    ESP_LOGI(TAG, "gpio wakeup source is ready");
-    return ESP_OK;
-}
-
-void ble_store_config_init(void);
 
 /**
  * Enables advertising with the following parameters:
@@ -101,9 +90,7 @@ static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg) {
     return 0;
 }
 
-static void ble_spp_server_on_reset(int reason) {
-    MODLOG_DFLT(ERROR, "Resetting state; reason=%d\n", reason);
-}
+static void ble_spp_server_on_reset(int reason) { return; }
 
 void ble_spp_server_host_task(void *param) {
     MODLOG_DFLT(INFO, "BLE Host Task Started");
@@ -113,101 +100,9 @@ void ble_spp_server_host_task(void *param) {
     nimble_port_freertos_deinit();
 }
 
-/* Callback function for custom service */
-static int ble_svc_gatt_handler(uint16_t conn_handle, uint16_t attr_handle,
-                                struct ble_gatt_access_ctxt *ctxt, void *arg) {
-    switch (ctxt->op) {
-    case BLE_GATT_ACCESS_OP_READ_CHR:
-        MODLOG_DFLT(INFO, "Callback for read");
-        break;
-
-    case BLE_GATT_ACCESS_OP_WRITE_CHR:
-        MODLOG_DFLT(
-            INFO,
-            "Data received in write event,conn_handle = %x,attr_handle = %x",
-            conn_handle, attr_handle);
-        break;
-
-    default:
-        MODLOG_DFLT(INFO, "\nDefault Callback");
-        break;
-    }
-    return 0;
-}
-
-/* Define new custom service */
-static const struct ble_gatt_svc_def new_ble_svc_gatt_defs[] = {
-    {
-        /*** Service: SPP */
-        .type = BLE_GATT_SVC_TYPE_PRIMARY,
-        .uuid = BLE_UUID16_DECLARE(BLE_SVC_SPP_UUID16),
-        .characteristics =
-            (struct ble_gatt_chr_def[]){
-                {
-                    /* Support SPP service */
-                    .uuid = BLE_UUID16_DECLARE(BLE_SVC_SPP_CHR_UUID16),
-                    .access_cb = ble_svc_gatt_handler,
-                    .val_handle = &ble_spp_svc_gatt_read_val_handle,
-                    .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE |
-                             BLE_GATT_CHR_F_NOTIFY,
-                },
-                {
-                    0, /* No more characteristics */
-                }},
-    },
-    {
-        0, /* No more services. */
-    },
-};
-
 static void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt,
                                  void *arg) {
-    char buf[BLE_UUID_STR_LEN];
-
-    switch (ctxt->op) {
-    case BLE_GATT_REGISTER_OP_SVC:
-        MODLOG_DFLT(DEBUG, "registered service %s with handle=%d\n",
-                    ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
-                    ctxt->svc.handle);
-        break;
-
-    case BLE_GATT_REGISTER_OP_CHR:
-        MODLOG_DFLT(DEBUG,
-                    "registering characteristic %s with "
-                    "def_handle=%d val_handle=%d\n",
-                    ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
-                    ctxt->chr.def_handle, ctxt->chr.val_handle);
-        break;
-
-    case BLE_GATT_REGISTER_OP_DSC:
-        MODLOG_DFLT(DEBUG, "registering descriptor %s with handle=%d\n",
-                    ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
-                    ctxt->dsc.handle);
-        break;
-
-    default:
-        assert(0);
-        break;
-    }
-}
-
-int gatt_svr_init(void) {
-    int rc = 0;
-    ble_svc_gap_init();
-    ble_svc_gatt_init();
-
-    rc = ble_gatts_count_cfg(new_ble_svc_gatt_defs);
-
-    if (rc != 0) {
-        return rc;
-    }
-
-    rc = ble_gatts_add_svcs(new_ble_svc_gatt_defs);
-    if (rc != 0) {
-        return rc;
-    }
-
-    return 0;
+    return;
 }
 
 static void main_poll() {
@@ -236,9 +131,8 @@ static void main_poll() {
 void app_main(void) {
     gpio_reset_pin(INPUT_PIN);
     gpio_set_direction(INPUT_PIN, GPIO_MODE_INPUT);
-    // gpio_set_intr_type(INPUT_PIN, GPIO_INTR_POSEDGE);
-
-    int rc;
+    gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_HIGH_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
 
     /* Initialize NVS — it is used to store PHY calibration data */
     esp_err_t ret = nvs_flash_init();
@@ -249,51 +143,15 @@ void app_main(void) {
     }
     ESP_ERROR_CHECK(ret);
 
-    ret = nimble_port_init();
-    if (ret != ESP_OK) {
-        MODLOG_DFLT(ERROR, "Failed to init nimble %d \n", ret);
-        return;
-    }
-
-    /* Initialize connection_handle array */
-    for (int i = 0; i <= CONFIG_BT_NIMBLE_MAX_CONNECTIONS; i++) {
-        conn_handle_subs[i] = false;
-    }
-
     /* Initialize the NimBLE host configuration. */
     ble_hs_cfg.reset_cb = ble_spp_server_on_reset;
-    // ble_hs_cfg.sync_cb = ble_spp_server_on_sync;
     ble_hs_cfg.gatts_register_cb = gatt_svr_register_cb;
     ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
-
     ble_hs_cfg.sm_io_cap = CONFIG_EXAMPLE_IO_TYPE;
-#ifdef CONFIG_EXAMPLE_BONDING
-    ble_hs_cfg.sm_bonding = 1;
-#endif
-#ifdef CONFIG_EXAMPLE_MITM
-    ble_hs_cfg.sm_mitm = 1;
-#endif
-#ifdef CONFIG_EXAMPLE_USE_SC
-    ble_hs_cfg.sm_sc = 1;
-#else
-    ble_hs_cfg.sm_sc = 0;
-#endif
-#ifdef CONFIG_EXAMPLE_BONDING
-    ble_hs_cfg.sm_our_key_dist = 1;
-    ble_hs_cfg.sm_their_key_dist = 1;
-#endif
 
-    /* Register custom service */
-    rc = gatt_svr_init();
-    assert(rc == 0);
-
-    rc = ble_svc_gap_device_name_set("nimbleServer_B1");
-    assert(rc == 0);
-    esp_err_t err = example_register_gpio_wakeup();
-    assert(err == ESP_OK);
-
-    ble_store_config_init();
+    nimble_port_init();
     nimble_port_freertos_init(ble_spp_server_host_task);
+
     while (1) {
         main_poll();
     }
