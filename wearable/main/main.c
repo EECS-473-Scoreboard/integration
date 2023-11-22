@@ -9,6 +9,7 @@
 #include "esp_check.h"
 #include "esp_sleep.h"
 #include "host/ble_hs.h"
+#include "host/ble_hs_adv.h"
 #include "host/util/util.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
@@ -20,70 +21,35 @@
 RTC_DATA_ATTR int rf_calib_skipped = 0;
 int count = 1;
 
-static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
-static void ble_spp_server_advertise(void);
-static uint8_t own_addr_type;
+struct ble_hs_adv_fields adv_fields;
+struct ble_gap_adv_params adv_params;
 
-/**
- * Enables advertising with the following parameters:
- *     o General discoverable mode.
- *     o Undirected connectable mode.
- */
-static void ble_spp_server_advertise(void) {
-    struct ble_gap_adv_params adv_params;
-    struct ble_hs_adv_fields fields;
-    const char *name;
-    int rc;
-
-    /**
-     *  Set the advertisement data included in our advertisements:
-     *     o Flags (indicates advertisement type and other general info).
-     *     o Advertising tx power.
-     *     o Device name.
-     *     o 16-bit service UUIDs (alert notifications).
-     */
-
-    memset(&fields, 0, sizeof fields);
+static void init_adv_structs() {
+    memset(&adv_fields, 0, sizeof(adv_fields));
+    memset(&adv_params, 0, sizeof(adv_params));
 
     /* Advertise two flags:
      *     o Discoverability in forthcoming advertisement (general)
      *     o BLE-only (BR/EDR unsupported).
      */
-    fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
+    adv_fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
 
     /* Indicate that the TX power level field should be included; have the
      * stack fill this value automatically.  This is done by assigning the
      * special value BLE_HS_ADV_TX_PWR_LVL_AUTO.
      */
-    fields.tx_pwr_lvl_is_present = 1;
-    fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
+    adv_fields.tx_pwr_lvl_is_present = 1;
+    adv_fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
 
-    name = ble_svc_gap_device_name();
-    fields.name = (uint8_t *)name;
-    fields.name_len = strlen(name);
-    fields.name_is_complete = 1;
+    adv_fields.uuids16 = (ble_uuid16_t[]){BLE_UUID16_INIT(BLE_SVC_SPP_UUID16)};
+    adv_fields.num_uuids16 = 1;
+    adv_fields.uuids16_is_complete = 1;
 
-    fields.uuids16 = (ble_uuid16_t[]){BLE_UUID16_INIT(BLE_SVC_SPP_UUID16)};
-    fields.num_uuids16 = 1;
-    fields.uuids16_is_complete = 1;
-
-    rc = ble_gap_adv_set_fields(&fields);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "error setting advertisement data; rc=%d\n", rc);
-        return;
-    }
-
-    /* Begin advertising. */
-    memset(&adv_params, 0, sizeof adv_params);
     adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-    rc = ble_gap_adv_start(own_addr_type, NULL, BLE_HS_FOREVER, &adv_params,
-                           ble_spp_server_gap_event, NULL);
-    if (rc != 0) {
-        MODLOG_DFLT(ERROR, "error enabling advertisement; rc=%d\n", rc);
-        return;
-    }
 }
+
+static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
 
 // we do not care events resulted from a round of advertising
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg) {
@@ -107,19 +73,27 @@ static void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt,
 
 static void main_poll() {
     esp_light_sleep_start();
-    if (count <= 9) {
-        char newString[40];
-        snprintf(newString, sizeof(newString), "nimbleServer_%d1", count);
-        int ret = ble_svc_gap_device_name_set(newString);
-        assert(ret == 0);
-        ble_spp_server_advertise();
-        vTaskDelay(20 / portTICK_PERIOD_MS);
-        ble_gap_adv_stop();
-    }
+
+    char str[40];
+    if (count > 9)
+        count = 0;
+    snprintf(str, sizeof(str), "nimbleServer_%d1", count);
+
+    init_adv_structs();
+
+    ble_svc_gap_device_name_set(str);
+    const char *name = ble_svc_gap_device_name();
+    adv_fields.name = (uint8_t *)name;
+    adv_fields.name_len = strlen(name);
+    adv_fields.name_is_complete = 1;
+    ble_gap_adv_set_fields(&adv_fields);
+
+    ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params,
+                      ble_spp_server_gap_event, NULL);
+    vTaskDelay(20 / portTICK_PERIOD_MS);
+    ble_gap_adv_stop();
+
     count++;
-    if (count > 9) {
-        count = 2;
-    }
 
     while (gpio_get_level(INPUT_PIN)) {
         gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_LOW_LEVEL);
@@ -130,7 +104,7 @@ static void main_poll() {
 
 void app_main(void) {
     if (rf_calib_skipped++ == 0) {
-        esp_deep_sleep(5000);
+        esp_deep_sleep(50000);
     }
 
     gpio_reset_pin(INPUT_PIN);
