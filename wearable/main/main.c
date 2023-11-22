@@ -6,6 +6,7 @@
 #include "console/console.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
+#include "esp_bt.h"
 #include "esp_check.h"
 #include "esp_sleep.h"
 #include "host/ble_hs.h"
@@ -26,6 +27,7 @@ RTC_DATA_ATTR int rf_calib_skipped = 0;
 int count = 1;
 
 #define ADV_TIME_MS 4
+#define ADV_POWER ESP_PWR_LVL_P15
 
 struct ble_hs_adv_fields adv_fields;
 struct ble_gap_adv_params adv_params;
@@ -47,7 +49,7 @@ static void init_adv_structs() {
      * special value BLE_HS_ADV_TX_PWR_LVL_AUTO.
      */
     adv_fields.tx_pwr_lvl_is_present = 1;
-    adv_fields.tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO;
+    adv_fields.tx_pwr_lvl = esp_ble_tx_power_get(ESP_BLE_PWR_TYPE_ADV);
 
     adv_fields.uuids16 = (ble_uuid16_t[]){BLE_UUID16_INIT(BLE_SVC_SPP_UUID16)};
     adv_fields.num_uuids16 = 1;
@@ -138,6 +140,7 @@ void app_main(void) {
 
     nimble_port_init();
     nimble_port_freertos_init(ble_spp_server_host_task);
+    esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ADV_POWER);
 
     main_thread = xTaskGetCurrentTaskHandle();
 
