@@ -83,6 +83,7 @@ static void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt,
 }
 
 static void main_poll() {
+    gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_HIGH_LEVEL);
     esp_light_sleep_start();
 
     char str[40];
@@ -106,11 +107,8 @@ static void main_poll() {
 
     count++;
 
-    while (gpio_get_level(INPUT_PIN)) {
-        gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_LOW_LEVEL);
-        esp_light_sleep_start();
-    }
-    gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_HIGH_LEVEL);
+    gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_LOW_LEVEL);
+    esp_light_sleep_start();
 }
 
 void app_main(void) {
@@ -120,17 +118,10 @@ void app_main(void) {
 
     gpio_reset_pin(INPUT_PIN);
     gpio_set_direction(INPUT_PIN, GPIO_MODE_INPUT);
-    gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_HIGH_LEVEL);
     esp_sleep_enable_gpio_wakeup();
 
     /* Initialize NVS — it is used to store PHY calibration data */
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-        ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
+    nvs_flash_init();
 
     /* Initialize the NimBLE host configuration. */
     ble_hs_cfg.reset_cb = ble_spp_server_on_reset;
