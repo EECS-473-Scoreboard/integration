@@ -16,13 +16,21 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 
+/* FreeRTOS */
+#include "freertos/portmacro.h"
+#include "freertos/projdefs.h"
+
 #define INPUT_PIN 23
 
 RTC_DATA_ATTR int rf_calib_skipped = 0;
 int count = 1;
 
+#define ADV_TIME_MS 4
+
 struct ble_hs_adv_fields adv_fields;
 struct ble_gap_adv_params adv_params;
+
+TaskHandle_t main_thread;
 
 static void init_adv_structs() {
     memset(&adv_fields, 0, sizeof(adv_fields));
@@ -49,10 +57,11 @@ static void init_adv_structs() {
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
 }
 
-static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
+static int adv_event_cb(struct ble_gap_event *event, void *arg) {
+    if (event->type != BLE_GAP_EVENT_ADV_COMPLETE)
+        return 0;
 
-// we do not care events resulted from a round of advertising
-static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg) {
+    xTaskNotifyGive(main_thread);
     return 0;
 }
 
@@ -88,10 +97,10 @@ static void main_poll() {
     adv_fields.name_is_complete = 1;
     ble_gap_adv_set_fields(&adv_fields);
 
-    ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER, &adv_params,
-                      ble_spp_server_gap_event, NULL);
-    vTaskDelay(20 / portTICK_PERIOD_MS);
-    ble_gap_adv_stop();
+    ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, ADV_TIME_MS, &adv_params,
+                      adv_event_cb, NULL);
+
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     count++;
 
@@ -129,6 +138,8 @@ void app_main(void) {
 
     nimble_port_init();
     nimble_port_freertos_init(ble_spp_server_host_task);
+
+    main_thread = xTaskGetCurrentTaskHandle();
 
     while (1) {
         main_poll();
