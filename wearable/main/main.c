@@ -211,17 +211,13 @@ int gatt_svr_init(void) {
 }
 
 static void main_poll() {
-    printf("Entering light sleep!\n");
-    uart_wait_tx_idle_polling(CONFIG_ESP_CONSOLE_UART_NUM);
     esp_light_sleep_start();
-    printf("YOU WOKE UP\n");
     if (count <= 9) {
         char newString[40];
         snprintf(newString, sizeof(newString), "nimbleServer_%d1", count);
         int ret = ble_svc_gap_device_name_set(newString);
         assert(ret == 0);
         ble_spp_server_advertise();
-        printf("name changed\n");
         vTaskDelay(20 / portTICK_PERIOD_MS);
         ble_gap_adv_stop();
     }
@@ -230,8 +226,11 @@ static void main_poll() {
         count = 2;
     }
 
-    while (gpio_get_level(INPUT_PIN))
-        ;
+    while (gpio_get_level(INPUT_PIN)) {
+        gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_LOW_LEVEL);
+        esp_light_sleep_start();
+    }
+    gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_HIGH_LEVEL);
 }
 
 void app_main(void) {
