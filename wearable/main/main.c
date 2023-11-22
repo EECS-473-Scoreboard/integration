@@ -17,7 +17,6 @@
 
 #define INPUT_PIN 23
 
-int state = 0;
 int count = 1;
 
 static int ble_spp_server_gap_event(struct ble_gap_event *event, void *arg);
