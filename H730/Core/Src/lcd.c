@@ -48,14 +48,19 @@ void init_display() {
     lvgl_disp_drv.draw_buf = &lvgl_buf;
     lvgl_disp_drv.hor_res = LCD_RENDER_WIDTH;
     lvgl_disp_drv.ver_res = LCD_RENDER_HEIGHT;
+    lvgl_disp_drv.sw_rotate = 0;
+    lvgl_disp_drv.rotated = LV_DISP_ROT_90;
     lv_disp_drv_register(&lvgl_disp_drv);
 }
 
 void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
-    int32_t x, y;
-    for (y = area->y1; y <= area->y2; y++) {
-        for (x = area->x1; x <= area->x2; x++) {
-            fb[y * LCD_RENDER_WIDTH + x] = *(uint8_t *)color_p;
+    // LVGL provides a top-left to bottom-right region to draw
+    // we draw it in framebuffer from bottom-left to top-right
+    // so that the landscape screen is used vertically
+    int32_t x_mem, y_mem;
+    for (x_mem = area->y1; x_mem <= area->y2; x_mem++) {
+        for (y_mem = area->x2; y_mem >= area->x1; y_mem--) {
+            fb[y_mem * LCD_RENDER_WIDTH + x_mem] = *(uint8_t *)color_p;
             color_p++;
         }
     }
