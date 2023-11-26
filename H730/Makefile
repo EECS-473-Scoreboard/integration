@@ -40,6 +40,7 @@ BUILD_DIR = build
 C_SOURCES =  \
 $(shell find $(LVGL_DIR) -type f -name '*.c' -not -path '*/\.*') \
 $(shell find ui/scoreboard/src -type f -name '*.c' -not -path '*/\.*') \
+Core/Src/wearable.c \
 Core/Src/lcd.c \
 Core/Src/main.c \
 Core/Src/gpio.c \

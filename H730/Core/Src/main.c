@@ -26,8 +26,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "common.h"
 #include "lcd.h"
 #include "main_menu.h"
+#include "wearable.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,7 +51,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+lv_obj_t *main_menu;
+uint32_t SC_EVENT_WEARABLE;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -104,8 +108,10 @@ int main(void) {
     MX_USART3_UART_Init();
     MX_ADC3_Init();
     /* USER CODE BEGIN 2 */
+    init_wearable();
     init_display();
-    main_menu_build(lv_scr_act());
+    main_menu = lv_scr_act();
+    main_menu_build(main_menu);
     /* USER CODE END 2 */
 
     /* Infinite loop */

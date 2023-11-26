@@ -1,4 +1,7 @@
 #include "lcd.h"
+#include "common.h"
+#include "main_menu.h"
+#include "wearable.h"
 
 #include "stm32h7xx_hal_def.h"
 #include <stdint.h>
@@ -18,6 +21,35 @@ static lv_disp_drv_t lvgl_disp_drv;
 // draw buffer for lvgl
 static lv_disp_draw_buf_t lvgl_buf;
 static lv_color_t draw_buf[LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT / 10];
+
+static void read_wearable(lv_indev_drv_t *_, lv_indev_data_t *data) {
+    static bool dummy_read = false;
+
+    if (dummy_read) {
+        // manually send a release after one event
+        data->state = LV_INDEV_STATE_RELEASED;
+        data->continue_reading = false;
+        dummy_read = false;
+    } else {
+        wearable_event_t event = poll_wearable();
+        if (event.bits != NO_WEARABLE_EVENT) {
+            // a new event
+            data->state = LV_INDEV_STATE_PRESSED;
+            data->key = event.bits;
+            // force one more following poll
+            data->continue_reading = true;
+            dummy_read = true;
+        }
+    }
+}
+
+static void broadcast_wearable_event(struct _lv_indev_drv_t *_, uint8_t code) {
+    if (code != LV_EVENT_KEY)
+        return;
+    wearable_event_t event = {.bits = lv_indev_get_key(lv_indev_get_act())};
+
+    lv_event_send(main_menu, SC_EVENT_WEARABLE, event.word);
+}
 
 void init_display() {
     // point LTDC to framebuffer
@@ -56,6 +88,13 @@ void init_display() {
         disp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
         LV_THEME_DEFAULT_DARK, LV_FONT_DEFAULT);
     lv_disp_set_theme(disp, th);
+
+    static lv_indev_drv_t wearable_indev;
+    lv_indev_drv_init(&wearable_indev);
+    wearable_indev.type = LV_INDEV_TYPE_KEYPAD;
+    wearable_indev.read_cb = read_wearable;
+    SC_EVENT_WEARABLE = lv_event_register_id();
+    wearable_indev.feedback_cb = broadcast_wearable_event;
 }
 
 void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {

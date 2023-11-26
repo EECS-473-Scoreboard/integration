@@ -1,6 +1,8 @@
 #include "main_menu.h"
 #include "common.h"
 
+#include <stdio.h>
+
 #include "lvgl/src/core/lv_event.h"
 #include "lvgl/src/core/lv_obj.h"
 #include "lvgl/src/core/lv_obj_pos.h"
@@ -12,6 +14,8 @@
 #include "lvgl/src/widgets/lv_label.h"
 #include "lvgl/src/widgets/lv_textarea.h"
 
+static main_menu_state_t state;
+
 static enum screen_state_t {
     IDLE,
     P1_PARING,
@@ -20,8 +24,47 @@ static enum screen_state_t {
 
 static lv_obj_t *p1_textarea;
 static lv_obj_t *p1_pair_btn;
+static lv_obj_t *p1_pair_lbl;
 static lv_obj_t *p2_textarea;
 static lv_obj_t *p2_pair_btn;
+static lv_obj_t *p2_pair_lbl;
+
+static void wearable_packet_rcvd(lv_event_t *e) {
+    wearable_event_t event = (wearable_event_t)e->param;
+    char addr_str[7];
+    sprintf(addr_str, "0x%4X", event.fields.id);
+
+    switch (menu_state) {
+    case IDLE:
+        return;
+    case P1_PARING:
+        lv_label_set_text(lv_obj_get_child(p1_pair_btn, 0), "Pair");
+        lv_obj_clear_state(p1_pair_btn, LV_STATE_CHECKED);
+        lv_label_set_text(p1_pair_lbl, addr_str);
+        state.wearable_1 = event.fields.id;
+        break;
+    case P2_PARING:
+        lv_label_set_text(lv_obj_get_child(p2_pair_btn, 0), "Pair");
+        lv_obj_clear_state(p2_pair_btn, LV_STATE_CHECKED);
+        lv_label_set_text(p2_pair_lbl, addr_str);
+        state.wearable_2 = event.fields.id;
+        break;
+    }
+
+    // the same wearable paired to two players
+    if (state.wearable_1 == state.wearable_2) {
+        // discard the previous pair
+        if (menu_state == P1_PARING) {
+            lv_label_set_text(p2_pair_lbl, "<NONE>");
+            state.wearable_2 = NO_WEARABLE;
+        } else {
+            lv_label_set_text(p1_pair_lbl, "<NONE>");
+            state.wearable_1 = NO_WEARABLE;
+        }
+    }
+
+    menu_state = IDLE;
+}
 
 static void pair_btn_pressed(lv_event_t *e) {
     lv_obj_t *btn = lv_event_get_target(e);
@@ -74,9 +117,13 @@ inline static void set_pair_btn_style(lv_obj_t *btn) {
 }
 
 void main_menu_build(lv_obj_t *scr) {
+    state.wearable_1 = NO_WEARABLE;
+    state.wearable_2 = NO_WEARABLE;
     menu_state = IDLE;
 
     lv_obj_set_style_bg_color(scr, COLOR_GREY, LV_PART_MAIN);
+
+    lv_obj_add_event_cb(scr, wearable_packet_rcvd, SC_EVENT_WEARABLE, NULL);
 
     lv_obj_t *title = lv_label_create(scr);
     lv_label_set_text(title, "SCORE++ | Scoreboard");
@@ -94,6 +141,9 @@ void main_menu_build(lv_obj_t *scr) {
     lv_obj_add_event_cb(p1_pair_btn, pair_btn_pressed, LV_EVENT_CLICKED, NULL);
     set_pair_btn_style(p1_pair_btn);
     lv_obj_set_pos(p1_pair_btn, 256, 84);
+    p1_pair_lbl = lv_label_create(scr);
+    lv_label_set_text(p1_pair_lbl, "<NONE>");
+    lv_obj_align_to(p1_pair_lbl, p1_pair_btn, LV_ALIGN_BOTTOM_MID, 0, 40);
 
     p2_textarea = lv_textarea_create(scr);
     set_textarea_style(p2_textarea);
@@ -106,4 +156,7 @@ void main_menu_build(lv_obj_t *scr) {
     lv_obj_add_event_cb(p2_pair_btn, pair_btn_pressed, LV_EVENT_CLICKED, NULL);
     set_pair_btn_style(p2_pair_btn);
     lv_obj_set_pos(p2_pair_btn, 256, 186);
+    p2_pair_lbl = lv_label_create(scr);
+    lv_label_set_text(p2_pair_lbl, "<NONE>");
+    lv_obj_align_to(p2_pair_lbl, p2_pair_btn, LV_ALIGN_BOTTOM_MID, 0, 40);
 }
