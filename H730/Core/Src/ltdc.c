@@ -61,8 +61,8 @@ void MX_LTDC_Init(void)
   }
   pLayerCfg.WindowX0 = 0;
   pLayerCfg.WindowX1 = 800;
-  pLayerCfg.WindowY0 = 0;
-  pLayerCfg.WindowY1 = 400;
+  pLayerCfg.WindowY0 = 40;
+  pLayerCfg.WindowY1 = 440;
   pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_L8;
   pLayerCfg.Alpha = 255;
   pLayerCfg.Alpha0 = 0;
@@ -105,7 +105,7 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef* ltdcHandle)
     PeriphClkInitStruct.PLL3.PLL3R = 12;
     PeriphClkInitStruct.PLL3.PLL3RGE = RCC_PLL3VCIRANGE_3;
     PeriphClkInitStruct.PLL3.PLL3VCOSEL = RCC_PLL3VCOWIDE;
-    PeriphClkInitStruct.PLL3.PLL3FRACN = 5632.0;
+    PeriphClkInitStruct.PLL3.PLL3FRACN = 5632;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
     {
       Error_Handler();
