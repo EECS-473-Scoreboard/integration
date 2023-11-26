@@ -39,6 +39,7 @@ BUILD_DIR = build
 # C sources
 C_SOURCES =  \
 $(shell find $(LVGL_DIR) -type f -name '*.c' -not -path '*/\.*') \
+$(shell find ui/scoreboard/src -type f -name '*.c' -not -path '*/\.*') \
 Core/Src/lcd.c \
 Core/Src/main.c \
 Core/Src/gpio.c \
@@ -138,6 +139,7 @@ AS_INCLUDES =
 C_INCLUDES =  \
 -I. \
 -Ilvgl \
+-Iui/scoreboard/inc \
 -ICore/Inc \
 -IDrivers/STM32H7xx_HAL_Driver/Inc \
 -IDrivers/STM32H7xx_HAL_Driver/Inc/Legacy \

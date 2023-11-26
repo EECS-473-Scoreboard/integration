@@ -27,6 +27,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "lcd.h"
+#include "main_menu.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -104,9 +105,7 @@ int main(void) {
     MX_ADC3_Init();
     /* USER CODE BEGIN 2 */
     init_display();
-    lv_obj_t *label = lv_label_create(lv_scr_act());
-    lv_label_set_text(label, "Hello, World!");
-    lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+    main_menu_build(lv_scr_act());
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -114,7 +113,6 @@ int main(void) {
     while (1) {
         lv_timer_handler();
         HAL_Delay(5);
-        lv_tick_inc(5);
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */

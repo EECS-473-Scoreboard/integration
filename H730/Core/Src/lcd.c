@@ -50,7 +50,12 @@ void init_display() {
     lvgl_disp_drv.ver_res = LCD_RENDER_HEIGHT;
     lvgl_disp_drv.sw_rotate = 0;
     lvgl_disp_drv.rotated = LV_DISP_ROT_90;
-    lv_disp_drv_register(&lvgl_disp_drv);
+    lv_disp_t *disp = lv_disp_drv_register(&lvgl_disp_drv);
+
+    lv_theme_t *th = lv_theme_default_init(
+        disp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
+        LV_THEME_DEFAULT_DARK, LV_FONT_DEFAULT);
+    lv_disp_set_theme(disp, th);
 }
 
 void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
