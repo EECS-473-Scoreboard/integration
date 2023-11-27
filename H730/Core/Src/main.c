@@ -52,7 +52,6 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-lv_obj_t *main_menu;
 uint32_t SC_EVENT_WEARABLE;
 /* USER CODE END PV */
 
@@ -112,8 +111,7 @@ int main(void) {
     /* USER CODE BEGIN 2 */
     init_wearable();
     init_display();
-    main_menu = lv_scr_act();
-    main_menu_build(main_menu);
+    init_touch();
     /* USER CODE END 2 */
 
     /* Infinite loop */

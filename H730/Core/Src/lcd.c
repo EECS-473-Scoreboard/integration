@@ -19,6 +19,8 @@ static lv_disp_drv_t lvgl_disp_drv;
 static lv_disp_draw_buf_t lvgl_buf;
 static lv_color_t draw_buf[LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT / 10];
 
+lv_obj_t *main_menu;
+
 static void read_wearable(lv_indev_drv_t *_, lv_indev_data_t *data) {
     static bool dummy_read = false;
 
@@ -61,6 +63,8 @@ void init_display() {
         // Note on endianess: will be writing to register, not memory.
         CLUT[rgb332] = (rgb332 << 24) + (r << 16) + (g << 8) + b;
     }
+    // load pure white
+    CLUT[0xFF] = 0xFFFFFFFF;
     // point LTDC to CLUT
     HAL_LTDC_ConfigCLUT(&hltdc, CLUT, 256, LTDC_LAYER_1);
     // load CLUT. Each word in the array will be written to the CLUTWR register
@@ -86,12 +90,17 @@ void init_display() {
         LV_THEME_DEFAULT_DARK, LV_FONT_DEFAULT);
     lv_disp_set_theme(disp, th);
 
+    // reuse the default screen for main menu
+    main_menu = lv_scr_act();
+    main_menu_build(main_menu);
+
     static lv_indev_drv_t wearable_indev;
     lv_indev_drv_init(&wearable_indev);
     wearable_indev.type = LV_INDEV_TYPE_KEYPAD;
     wearable_indev.read_cb = read_wearable;
     SC_EVENT_WEARABLE = lv_event_register_id();
     wearable_indev.feedback_cb = broadcast_wearable_event;
+    lv_indev_drv_register(&wearable_indev);
 }
 
 void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
@@ -100,7 +109,9 @@ void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
     // so that the landscape screen is used vertically
     int32_t x_mem, y_mem;
     for (x_mem = area->y1; x_mem <= area->y2; x_mem++) {
-        for (y_mem = area->x2; y_mem >= area->x1; y_mem--) {
+        // Richardn: I do not want to explain this math...
+        for (y_mem = LCD_RENDER_HEIGHT - area->x1;
+             y_mem >= LCD_RENDER_HEIGHT - area->x2; y_mem--) {
             fb[y_mem * LCD_RENDER_WIDTH + x_mem] = *(uint8_t *)color_p;
             color_p++;
         }
