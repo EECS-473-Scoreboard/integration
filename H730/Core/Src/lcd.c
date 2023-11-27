@@ -101,6 +101,12 @@ void init_display() {
     SC_EVENT_WEARABLE = lv_event_register_id();
     wearable_indev.feedback_cb = broadcast_wearable_event;
     lv_indev_drv_register(&wearable_indev);
+
+    static lv_indev_drv_t touch_indev;
+    lv_indev_drv_init(&touch_indev);
+    touch_indev.type = LV_INDEV_TYPE_POINTER;
+    touch_indev.read_cb = read_touch;
+    lv_indev_drv_register(&touch_indev);
 }
 
 void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
