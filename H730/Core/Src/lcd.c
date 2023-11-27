@@ -116,8 +116,8 @@ void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
     int32_t x_mem, y_mem;
     for (x_mem = area->y1; x_mem <= area->y2; x_mem++) {
         // Richardn: I do not want to explain this math...
-        for (y_mem = LCD_RENDER_HEIGHT - area->x1;
-             y_mem >= LCD_RENDER_HEIGHT - area->x2; y_mem--) {
+        for (y_mem = LCD_RENDER_HEIGHT - area->x1 - 1;
+             y_mem >= LCD_RENDER_HEIGHT - area->x2 - 1; y_mem--) {
             fb[y_mem * LCD_RENDER_WIDTH + x_mem] = *(uint8_t *)color_p;
             color_p++;
         }
