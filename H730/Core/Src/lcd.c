@@ -38,6 +38,10 @@ static void read_wearable(lv_indev_drv_t *_, lv_indev_data_t *data) {
             // force one more following poll
             data->continue_reading = true;
             dummy_read = true;
+        } else {
+            // nothing new
+            data->state = LV_INDEV_STATE_RELEASED;
+            data->continue_reading = false;
         }
     }
 }
@@ -90,10 +94,6 @@ void init_display() {
         LV_THEME_DEFAULT_DARK, LV_FONT_DEFAULT);
     lv_disp_set_theme(disp, th);
 
-    // reuse the default screen for main menu
-    main_menu = lv_scr_act();
-    main_menu_build(main_menu);
-
     static lv_indev_drv_t wearable_indev;
     lv_indev_drv_init(&wearable_indev);
     wearable_indev.type = LV_INDEV_TYPE_KEYPAD;
@@ -107,6 +107,10 @@ void init_display() {
     touch_indev.type = LV_INDEV_TYPE_POINTER;
     touch_indev.read_cb = read_touch;
     lv_indev_drv_register(&touch_indev);
+
+    // reuse the default screen for main menu
+    main_menu = lv_scr_act();
+    main_menu_build(main_menu);
 }
 
 void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
