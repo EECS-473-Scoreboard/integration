@@ -10,7 +10,7 @@
 #define LCD_RENDER_HEIGHT 400
 
 // take the median of this number of adc readings as the final output
-#define ADC_MEDIAN_SIZE 101
+#define ADC_MEDIAN_SIZE 21
 #define ADC_DMA_BUF_SIZE (ADC_MEDIAN_SIZE * 2)
 
 #define LCD_EN_PORT GPIOE
@@ -37,6 +37,6 @@ void test_display();
 void show_calib();
 
 void init_touch();
-int read_touch(lv_disp_drv_t *, lv_indev_data_t *);
+void read_touch(lv_indev_drv_t *, lv_indev_data_t *);
 
 #endif

@@ -277,31 +277,68 @@ static inline double calib_y(double x, double y) {
     return res;
 }
 
-int read_touch(lv_disp_drv_t *_, lv_indev_data_t *data) {
-    // if no touch, x and y value should persist
+// NUM consecutive touches with x and y within the DIST range yields a touch
+#define LCD_THRES_DIST 10
+#define LCD_THRES_NUM 5
+void read_touch(lv_indev_drv_t *_, lv_indev_data_t *data) {
     static uint16_t x = 0;
     static uint16_t y = 0;
+    static uint16_t oldX;
+    static uint16_t oldY;
+    static int cnt = 0;
 
     uint16_t raw_x = read_x();
     uint16_t raw_y = read_y();
-
     double newX = calib_x(((double)raw_x) / LCD_CALIB_ADC_MAX,
                           ((double)raw_y) / LCD_CALIB_ADC_MAX);
     double newY = calib_y(((double)raw_x) / LCD_CALIB_ADC_MAX,
                           ((double)raw_y) / LCD_CALIB_ADC_MAX);
 
+    // default report state
+    data->point.x = x;
+    data->point.y = y;
+    data->state = LV_INDEV_STATE_REL;
+
     if (newX < 0 || newX > LCD_RENDER_WIDTH || newY < 0 ||
         newY > LCD_RENDER_HEIGHT) {
-        data->point.x = x;
-        data->point.y = y;
-        data->state = LV_INDEV_STATE_REL;
+        // no new touch
+        cnt = 0;
+    } else if (cnt == 0) {
+        // new touch, and previously no touch
+        cnt = 1;
+        oldX = newX;
+        oldY = newY;
     } else {
-        x = newX;
-        y = newY;
-        data->point.x = x;
-        data->point.y = y;
-        data->state = LV_INDEV_STATE_PR;
-    }
+        // new touch, and previously some touch exists
+        // decide if the new touch is close enough to old
+        bool valid = true;
+        // beware of unsigned wrap arounds
+        if (newX < oldX && newX + LCD_THRES_DIST < oldX)
+            valid = false;
+        if (newX > oldX && newX > oldX + LCD_THRES_DIST)
+            valid = false;
+        if (newY < oldY && newY + LCD_THRES_DIST < oldY)
+            valid = false;
+        if (newY > oldY && newY > oldY + LCD_THRES_DIST)
+            valid = false;
 
-    return 0;
+        oldX = newX;
+        oldY = newY;
+
+        if (valid) {
+            // new touch is close to old
+            cnt++;
+            if (cnt >= LCD_THRES_NUM) {
+                // actually emit a touch
+                x = newX;
+                y = newY;
+                data->point.x = x;
+                data->point.y = y;
+                data->state = LV_INDEV_STATE_PR;
+            }
+        } else {
+            // new touch far from old, reset
+            cnt = 0;
+        }
+    }
 }
