@@ -8,9 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// take the median of this number of adc readings as the final output
-#define ADC_MEDIAN_SIZE 101
-
 // framebuffer stored in 320K SRAM1
 __attribute__((section(".ram_d1"), aligned(8)))
 uint8_t fb[LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT];
@@ -199,13 +196,19 @@ volatile int adc_ready;
 // called when all ADC channels have finished conversion
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *_) { adc_ready = 1; }
 
-static uint16_t read_adc1(uint32_t rank) {
+static uint16_t *read_adc1(uint32_t rank) {
     adc_ready = 0;
+
     HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_dma_buffer, ADC_DMA_BUF_SIZE);
     while (!adc_ready)
         ;
     HAL_ADC_Stop_DMA(&hadc1);
-    return adc_dma_buffer[rank];
+
+    static uint16_t buffer[ADC_MEDIAN_SIZE];
+    for (size_t i = 0; i < ADC_MEDIAN_SIZE; ++i) {
+        buffer[i] = adc_dma_buffer[2 * i + rank];
+    }
+    return buffer;
 }
 
 static uint16_t read_x() {
@@ -215,11 +218,7 @@ static uint16_t read_x() {
     to_floating(LCD_Y_U_PORT, LCD_Y_U_PIN);
     to_adc(LCD_Y_D_PORT, LCD_Y_D_PIN);
 
-    uint16_t buffer[ADC_MEDIAN_SIZE];
-    for (size_t i = 0; i < ADC_MEDIAN_SIZE; i++) {
-        buffer[i] = read_adc1(LCD_Y_D_ADC_RANK);
-    }
-    return median(buffer, ADC_MEDIAN_SIZE);
+    return median(read_adc1(LCD_Y_D_ADC_RANK), ADC_MEDIAN_SIZE);
 }
 
 static uint16_t read_y() {
@@ -229,11 +228,7 @@ static uint16_t read_y() {
     to_floating(LCD_X_L_PORT, LCD_X_L_PIN);
     to_adc(LCD_X_R_PORT, LCD_X_R_PIN);
 
-    uint16_t buffer[ADC_MEDIAN_SIZE];
-    for (size_t i = 0; i < ADC_MEDIAN_SIZE; i++) {
-        buffer[i] = read_adc1(LCD_X_R_ADC_RANK);
-    }
-    return median(buffer, ADC_MEDIAN_SIZE);
+    return median(read_adc1(LCD_X_R_ADC_RANK), ADC_MEDIAN_SIZE);
 }
 
 void init_touch() {}
