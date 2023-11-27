@@ -10,7 +10,7 @@
 #define LCD_RENDER_HEIGHT 400
 
 // take the median of this number of adc readings as the final output
-#define ADC_MEDIAN_SIZE 1001
+#define ADC_MEDIAN_SIZE 101
 #define ADC_DMA_BUF_SIZE (ADC_MEDIAN_SIZE * 2)
 
 #define LCD_EN_PORT GPIOE
@@ -26,12 +26,6 @@
 #define LCD_ADC_PORT ADC1
 #define LCD_X_R_ADC_RANK 0
 #define LCD_Y_D_ADC_RANK 1
-#define LCD_CALIB_A -0.187572
-#define LCD_CALIB_B 0.0618273
-#define LCD_CALIB_C 8371.38
-#define LCD_CALIB_D 0.0326768
-#define LCD_CALIB_E -0.0329235
-#define LCD_CALIB_F -8.26545
 
 extern uint8_t fb[LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT];
 

@@ -129,15 +129,26 @@ void test_display() {
     }
 }
 
-// display three points at:
-// - 10% from left, 10% from top
-// - 10% from right, 10% from top
-// - 50% from left. 20% from bottom
-// note that screen is 800x480 but display is 800x400 from (0,0)
+// clear the screen to black and display nine points with:
+// - x: 10%, 50%, 90% from left
+// - y: 10%, 50%, 90% from top
 void show_calib() {
-    fb[48 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 10] = 0xFE;
-    fb[48 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 10 * 9] = 0xFE;
-    fb[384 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 2] = 0xFE;
+    memset((void *)fb, 0, LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT);
+    fb[LCD_RENDER_HEIGHT / 10 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 10] =
+        0xFE;
+    fb[LCD_RENDER_HEIGHT / 2 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 10] = 0xFE;
+    fb[LCD_RENDER_HEIGHT / 10 * 9 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 10] =
+        0xFE;
+    fb[LCD_RENDER_HEIGHT / 10 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 2] = 0xFE;
+    fb[LCD_RENDER_HEIGHT / 2 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 2] = 0xFE;
+    fb[LCD_RENDER_HEIGHT / 10 * 9 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 2] =
+        0xFE;
+    fb[LCD_RENDER_HEIGHT / 10 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 10 * 9] =
+        0xFE;
+    fb[LCD_RENDER_HEIGHT / 2 * LCD_RENDER_WIDTH + LCD_RENDER_WIDTH / 10 * 9] =
+        0xFE;
+    fb[LCD_RENDER_HEIGHT / 10 * 9 * LCD_RENDER_WIDTH +
+       LCD_RENDER_WIDTH / 10 * 9] = 0xFE;
 }
 
 inline static void to_ground(GPIO_TypeDef *port, uint16_t pin) {
@@ -233,6 +244,39 @@ static uint16_t read_y() {
 
 void init_touch() {}
 
+#define LCD_CALIB_ORDER 2
+#define LCD_CALIB_ADC_MAX 65536
+static const double LCD_CALIB_X[LCD_CALIB_ORDER * 2 + 1] = {
+    -4886.9156798568465, 18519.65861645481, -2877.7732399874876,
+    -13710.84863385573, 3120.2033646686696};
+static const double LCD_CALIB_Y[LCD_CALIB_ORDER * 2 + 1] = {
+    3779.820365066189, -13041.008159146937, 5208.775507975057,
+    8643.107703742557, -4707.529845096905};
+// <math>'s pow() takes 8K of flash so
+static inline double my_pow(double x, size_t n) {
+    double res = 1;
+    for (; n > 0; n--) {
+        res *= x;
+    }
+    return res;
+}
+static inline double calib_x(double x, double y) {
+    double res = LCD_CALIB_X[0];
+    for (size_t i = 1; i <= LCD_CALIB_ORDER; i++) {
+        res += my_pow(x, i) * LCD_CALIB_X[2 * i - 1] +
+               my_pow(y, i) * LCD_CALIB_X[2 * i];
+    }
+    return res;
+}
+static inline double calib_y(double x, double y) {
+    double res = LCD_CALIB_Y[0];
+    for (size_t i = 1; i <= LCD_CALIB_ORDER; i++) {
+        res += my_pow(x, i) * LCD_CALIB_Y[2 * i - 1] +
+               my_pow(y, i) * LCD_CALIB_Y[2 * i];
+    }
+    return res;
+}
+
 int read_touch(lv_disp_drv_t *_, lv_indev_data_t *data) {
     // if no touch, x and y value should persist
     static uint16_t x = 0;
@@ -241,8 +285,10 @@ int read_touch(lv_disp_drv_t *_, lv_indev_data_t *data) {
     uint16_t raw_x = read_x();
     uint16_t raw_y = read_y();
 
-    double newX = LCD_CALIB_A * raw_x + LCD_CALIB_B * raw_y + LCD_CALIB_C;
-    double newY = LCD_CALIB_D * raw_x + LCD_CALIB_E * raw_y + LCD_CALIB_F;
+    double newX = calib_x(((double)raw_x) / LCD_CALIB_ADC_MAX,
+                          ((double)raw_y) / LCD_CALIB_ADC_MAX);
+    double newY = calib_y(((double)raw_x) / LCD_CALIB_ADC_MAX,
+                          ((double)raw_y) / LCD_CALIB_ADC_MAX);
 
     if (newX < 0 || newX > LCD_RENDER_WIDTH || newY < 0 ||
         newY > LCD_RENDER_HEIGHT) {
