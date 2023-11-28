@@ -2,6 +2,11 @@
 
 #include "usart.h"
 
+#define PACKET_SIZE 6
+#define MAX_EVENTS 5
+#define PACKET_START '{'
+#define PACKET_END '}'
+
 typedef struct {
     uint8_t start;
     uint16_t id;
@@ -12,19 +17,18 @@ typedef struct {
 typedef struct {
     event_t *Head;
     event_t *Tail;
-    event_t events[5];
+    event_t events[MAX_EVENTS];
     int data_size;
 } queue_t;
 
-static uint8_t EventBuf[6];
-static uint8_t uartBuf[1];
-static uint8_t completeEvent = 0;
-static uint8_t receiving = 0;
-static int eventpos = 0;
+static uint8_t EventBuf[PACKET_SIZE];
+static uint8_t uartBuf[MAX_EVENTS * PACKET_SIZE];
+static size_t bytes_rcvd = 0;
 static queue_t que;
 
 void init_wearable() {
-    HAL_UART_Receive_DMA(&huart5, uartBuf, 1);
+    __HAL_RCC_HSEM_CLK_ENABLE();
+    HAL_UART_Receive_IT(&huart7, uartBuf, 1);
     que.data_size = 0;
     que.Head = que.events;
     que.Tail = que.events;
@@ -39,37 +43,34 @@ static const event_t front() {
     }
 }
 
-static void push_back(uint8_t indata[6]) {
-    uint8_t start = indata[0];
-    uint16_t id_UH = indata[1] << 8;
-    uint16_t id_LH = indata[2];
-    uint16_t data_UH = indata[3] << 8;
-    uint16_t data_LH = indata[4];
-    uint8_t end = indata[5];
-    uint16_t data = data_UH | data_LH;
-    uint16_t id = id_UH | id_LH;
+static void push_back() {
+    uint8_t start = EventBuf[0];
+    uint16_t id = (EventBuf[1] << 8) + EventBuf[2];
+    uint16_t data = (EventBuf[3] << 8) + EventBuf[4];
+    uint8_t end = EventBuf[5];
+
     que.Tail->data = data;
     que.Tail->id = id;
     que.Tail->start = start;
     que.Tail->end = end;
-    if (que.Tail < que.events + 4) {
+    if (que.Tail < que.events + MAX_EVENTS - 1) {
         que.Tail = que.Tail + 1;
     } else {
         que.Tail = que.events;
     }
     if (que.Tail == que.Head && que.data_size > 0) {
-        if (que.Head < que.events + 4) {
+        if (que.Head < que.events + MAX_EVENTS - 1) {
             que.Head = que.Head + 1;
         } else {
             que.Head = que.events;
         }
     }
-    if (que.data_size < 5)
+    if (que.data_size < MAX_EVENTS)
         que.data_size++;
 }
 
 static void pop() {
-    if (que.Head - que.events < 4) {
+    if (que.Head - que.events < MAX_EVENTS - 1) {
         que.Head = que.Head + 1;
     } else {
         que.Head = que.events;
@@ -79,30 +80,43 @@ static void pop() {
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-    if (huart != &huart5)
+    if (huart != &huart7)
         return;
 
-    if (uartBuf[0] == '{') {
-        receiving = 1;
-    }
-    if (receiving == 1) {
-        EventBuf[eventpos] = uartBuf[0];
-        ++eventpos;
-        if (uartBuf[0] == '}' && eventpos == 6) {
-            receiving = 0;
-            completeEvent = 1;
-        }
-    }
-
-    if (completeEvent == 1) {
-        push_back(EventBuf);
-        eventpos = 0;
-        completeEvent = 0;
-    }
-    HAL_UART_Receive_DMA(&huart5, uartBuf, 1);
+    HAL_UART_Receive_IT(&huart7, &uartBuf[bytes_rcvd++], 1);
 }
 
 wearable_event_t poll_wearable() {
+    static bool receiving = false;
+    static size_t packet_progress = 0;
+
+    for (size_t i = 0; i < bytes_rcvd; i++) {
+        uint8_t b = uartBuf[i];
+        EventBuf[packet_progress++] = b;
+        if (receiving) {
+            if (b == PACKET_END) {
+                if (packet_progress == PACKET_SIZE) {
+                    push_back();
+                } else {
+                    receiving = false;
+                }
+                packet_progress = 0;
+            } else {
+                if (packet_progress == PACKET_SIZE) {
+                    receiving = false;
+                    packet_progress = 0;
+                }
+            }
+        } else {
+            if (b == PACKET_START) {
+                receiving = true;
+            } else {
+                packet_progress = 0;
+            }
+        }
+    }
+    bytes_rcvd = 0;
+
     wearable_event_t event;
     if (front().id == 0 && front().data == 0) {
         event.bits = NO_WEARABLE_EVENT;
