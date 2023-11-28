@@ -3,6 +3,7 @@
 
 /* BLE */
 #include "ble_spp_server.h"
+//#include "host/ble_uuid.h"
 #include "console/console.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
@@ -20,11 +21,19 @@
 /* FreeRTOS */
 #include "freertos/portmacro.h"
 #include "freertos/projdefs.h"
+#include "sdkconfig.h"
 
-#define INPUT_PIN 23
+#define INPUT_PIN_B4 23
+#define INPUT_PIN_B3 22
+#define INPUT_PIN_B2 21
+#define INPUT_PIN_B1 20
+#define DEVICE_ID 1
 
+uint8_t low4 = 1;
+uint8_t low3 = 1;
+uint8_t low2 = 1;
+uint8_t low1 = 1;
 RTC_DATA_ATTR int rf_calib_skipped = 0;
-int count = 1;
 
 #define ADV_TIME_MS 4
 #define ADV_POWER ESP_PWR_LVL_P15
@@ -81,17 +90,62 @@ static void gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt,
                                  void *arg) {
     return;
 }
+static void PinSetHigh(){
+    if(low4 == 1){
+        gpio_wakeup_enable(INPUT_PIN_B4, GPIO_INTR_HIGH_LEVEL);
+        low4 = 0;
+    }
+    if(low3 == 1){
+        gpio_wakeup_enable(INPUT_PIN_B3, GPIO_INTR_HIGH_LEVEL);
+        low3 = 0;
+    }
+    if(low2 == 1){ 
+        gpio_wakeup_enable(INPUT_PIN_B2, GPIO_INTR_HIGH_LEVEL);
+        low2 = 0;
+    }
+    if(low1 == 1) {
+        gpio_wakeup_enable(INPUT_PIN_B1, GPIO_INTR_HIGH_LEVEL);
+        low1 = 0;
+    }
+}
+static void PinSetLow(){
+    if(gpio_get_level(INPUT_PIN_B4)==1){
+        low4 = 1;
+        gpio_wakeup_enable(INPUT_PIN_B4, GPIO_INTR_LOW_LEVEL);
+    }
+    if(gpio_get_level(INPUT_PIN_B3)==1){
+        low3 = 1;
+        gpio_wakeup_enable(INPUT_PIN_B3, GPIO_INTR_LOW_LEVEL);
+    }
+    if(gpio_get_level(INPUT_PIN_B2)==1){
+        low2 = 1;
+        gpio_wakeup_enable(INPUT_PIN_B2, GPIO_INTR_LOW_LEVEL);
+    }
+    if(gpio_get_level(INPUT_PIN_B1)==1){
+        low1 = 1;
+        gpio_wakeup_enable(INPUT_PIN_B1, GPIO_INTR_LOW_LEVEL);
+    } 
+
+}
 
 static void main_poll() {
-    gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_HIGH_LEVEL);
+    PinSetHigh();
     esp_light_sleep_start();
-
+    PinSetLow();
     char str[40];
-    if (count > 9)
-        count = 0;
-    snprintf(str, sizeof(str), "nimbleServer_%d1", count);
-
+    uint32_t com = 1; //For now com is just a number 1 offset from the button nums
+    if(low1) com = 2;
+    else if(low2) com = 3;
+    else if(low3) com = 4;
+    else if(low4) com = 5;
+    com = com | (DEVICE_ID << 16);
+    char IdHC = (char)(((com>>24) & 0xFF) + '0');
+    char IdLC = (char)(((com>>16) & 0xFF) + '0');
+    char DataHC = (char)(((com >> 8) & 0xFF)+'0');
+    char DataLC = (char)(((com) & 0xFF)+'0');
+    snprintf(str, sizeof(str), "nimbleServer_%c%c%c%c#",IdHC,IdLC,DataHC,DataLC);
     init_adv_structs();
+    //printf(str);
 
     ble_svc_gap_device_name_set(str);
     const char *name = ble_svc_gap_device_name();
@@ -105,9 +159,6 @@ static void main_poll() {
 
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
-    count++;
-
-    gpio_wakeup_enable(INPUT_PIN, GPIO_INTR_LOW_LEVEL);
     esp_light_sleep_start();
 }
 
@@ -116,8 +167,14 @@ void app_main(void) {
         esp_deep_sleep(50000);
     }
 
-    gpio_reset_pin(INPUT_PIN);
-    gpio_set_direction(INPUT_PIN, GPIO_MODE_INPUT);
+    gpio_reset_pin(INPUT_PIN_B4);
+    gpio_set_direction(INPUT_PIN_B4, GPIO_MODE_INPUT);
+    gpio_reset_pin(INPUT_PIN_B3);
+    gpio_set_direction(INPUT_PIN_B3, GPIO_MODE_INPUT);
+    gpio_reset_pin(INPUT_PIN_B2);
+    gpio_set_direction(INPUT_PIN_B2, GPIO_MODE_INPUT);
+    gpio_reset_pin(INPUT_PIN_B1);
+    gpio_set_direction(INPUT_PIN_B1, GPIO_MODE_INPUT);
     esp_sleep_enable_gpio_wakeup();
 
     /* Initialize NVS — it is used to store PHY calibration data */
@@ -134,7 +191,6 @@ void app_main(void) {
     esp_ble_tx_power_set(ESP_BLE_PWR_TYPE_ADV, ADV_POWER);
 
     main_thread = xTaskGetCurrentTaskHandle();
-
     while (1) {
         main_poll();
     }
