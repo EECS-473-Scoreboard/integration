@@ -22,28 +22,27 @@ static lv_color_t draw_buf[LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT / 10];
 lv_obj_t *main_menu;
 
 static void read_wearable(lv_indev_drv_t *_, lv_indev_data_t *data) {
+    static uint32_t old_bits;
     static bool dummy_read = false;
 
     if (dummy_read) {
         // manually send a release after one event
         data->state = LV_INDEV_STATE_RELEASED;
-        data->continue_reading = false;
         dummy_read = false;
     } else {
         wearable_event_t event = poll_wearable();
         if (event.bits != NO_WEARABLE_EVENT) {
             // a new event
+            old_bits = event.bits;
             data->state = LV_INDEV_STATE_PRESSED;
-            data->key = event.bits;
-            // force one more following poll
-            data->continue_reading = true;
             dummy_read = true;
         } else {
             // nothing new
             data->state = LV_INDEV_STATE_RELEASED;
-            data->continue_reading = false;
         }
     }
+
+    data->key = old_bits;
 }
 
 static void broadcast_wearable_event(struct _lv_indev_drv_t *_, uint8_t code) {
@@ -94,23 +93,27 @@ void init_display() {
         LV_THEME_DEFAULT_DARK, LV_FONT_DEFAULT);
     lv_disp_set_theme(disp, th);
 
-    static lv_indev_drv_t wearable_indev;
-    lv_indev_drv_init(&wearable_indev);
-    wearable_indev.type = LV_INDEV_TYPE_KEYPAD;
-    wearable_indev.read_cb = read_wearable;
+    static lv_indev_drv_t wearable_drv;
+    lv_indev_drv_init(&wearable_drv);
+    wearable_drv.type = LV_INDEV_TYPE_KEYPAD;
+    wearable_drv.read_cb = read_wearable;
     SC_EVENT_WEARABLE = lv_event_register_id();
-    wearable_indev.feedback_cb = broadcast_wearable_event;
-    lv_indev_drv_register(&wearable_indev);
+    wearable_drv.feedback_cb = broadcast_wearable_event;
+    lv_indev_t *wearable_indev = lv_indev_drv_register(&wearable_drv);
 
-    static lv_indev_drv_t touch_indev;
-    lv_indev_drv_init(&touch_indev);
-    touch_indev.type = LV_INDEV_TYPE_POINTER;
-    touch_indev.read_cb = read_touch;
-    lv_indev_drv_register(&touch_indev);
+    static lv_indev_drv_t touch_drv;
+    lv_indev_drv_init(&touch_drv);
+    touch_drv.type = LV_INDEV_TYPE_POINTER;
+    touch_drv.read_cb = read_touch;
+    lv_indev_drv_register(&touch_drv);
 
     // reuse the default screen for main menu
     main_menu = lv_scr_act();
     main_menu_build(main_menu);
+
+    lv_group_t *g = lv_group_create();
+    lv_indev_set_group(wearable_indev, g);
+    lv_group_add_obj(g, main_menu);
 }
 
 void flush_cb(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p) {
