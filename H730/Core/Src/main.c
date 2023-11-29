@@ -104,14 +104,13 @@ int main(void) {
     MX_UART4_Init();
     MX_UART5_Init();
     MX_SAI4_Init();
-    MX_UART7_Init();
     MX_USART3_UART_Init();
     MX_ADC1_Init();
     MX_ADC3_Init();
     /* USER CODE BEGIN 2 */
     init_wearable();
-    init_display();
     init_touch();
+    init_display();
     /* USER CODE END 2 */
 
     /* Infinite loop */
