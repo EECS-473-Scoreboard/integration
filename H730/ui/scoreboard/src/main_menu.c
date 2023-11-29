@@ -29,10 +29,22 @@ static lv_obj_t *p2_textarea;
 static lv_obj_t *p2_pair_btn;
 static lv_obj_t *p2_pair_lbl;
 
+// implement sprintf(s, "0x%4X", w) with a small footprint
+static char *word_to_hex(uint16_t w) {
+    static char hex[7] = {'0', 'x'};
+
+    for (size_t i = 0; i < 4; i++) {
+        uint8_t oct = w >> ((3 - i) * 4);
+        oct &= 0xF;
+        hex[2 + i] = (oct > 9) ? 'A' + oct - 10 : '0' + oct;
+    }
+
+    return hex;
+}
+
 static void wearable_packet_rcvd(lv_event_t *e) {
     wearable_event_t event = (wearable_event_t)e->param;
-    char addr_str[7];
-    sprintf(addr_str, "0x%4X", event.fields.id);
+    char *addr_str = word_to_hex(event.fields.id);
 
     switch (menu_state) {
     case IDLE:

@@ -71,7 +71,7 @@
 #define LV_MEM_BUF_MAX_NUM 16
 
 /*Use the standard `memcpy` and `memset` instead of LVGL's own functions. (Might or might not be faster).*/
-#define LV_MEMCPY_MEMSET_STD 0
+#define LV_MEMCPY_MEMSET_STD 1
 
 /*====================
    HAL SETTINGS
@@ -261,8 +261,8 @@
 
 /*Enable asserts if an operation is failed or an invalid data is found.
  *If LV_USE_LOG is enabled an error message will be printed on failure*/
-#define LV_USE_ASSERT_NULL          1   /*Check if the parameter is NULL. (Very fast, recommended)*/
-#define LV_USE_ASSERT_MALLOC        1   /*Checks is the memory is successfully allocated or no. (Very fast, recommended)*/
+#define LV_USE_ASSERT_NULL          0   /*Check if the parameter is NULL. (Very fast, recommended)*/
+#define LV_USE_ASSERT_MALLOC        0   /*Checks is the memory is successfully allocated or no. (Very fast, recommended)*/
 #define LV_USE_ASSERT_STYLE         0   /*Check if the styles are properly initialized. (Very fast, recommended)*/
 #define LV_USE_ASSERT_MEM_INTEGRITY 0   /*Check the integrity of `lv_mem` after critical operations. (Slow)*/
 #define LV_USE_ASSERT_OBJ           0   /*Check the object's type and existence (e.g. not deleted). (Slow)*/
@@ -470,7 +470,7 @@
 
 #define LV_USE_ARC        0
 
-#define LV_USE_BAR        1
+#define LV_USE_BAR        0
 
 #define LV_USE_BTN        1
 
@@ -490,14 +490,14 @@
     #define LV_LABEL_LONG_TXT_HINT 0  /*Store some extra info in labels to speed up drawing of very long texts*/
 #endif
 
-#define LV_USE_LINE       1
+#define LV_USE_LINE       0
 
 #define LV_USE_ROLLER     1   /*Requires: lv_label*/
 #if LV_USE_ROLLER
     #define LV_ROLLER_INF_PAGES 7 /*Number of extra "pages" when the roller is infinite*/
 #endif
 
-#define LV_USE_SLIDER     1   /*Requires: lv_bar*/
+#define LV_USE_SLIDER     0   /*Requires: lv_bar*/
 
 #define LV_USE_SWITCH     0
 

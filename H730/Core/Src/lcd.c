@@ -210,16 +210,19 @@ inline static void to_adc(GPIO_TypeDef *port, uint16_t pin) {
     HAL_GPIO_Init(port, &s);
 }
 
-static int compare_u16(const void *a, const void *b) {
-    uint16_t left = *(uint16_t *)a;
-    uint16_t right = *(uint16_t *)b;
-    return (left > right) - (left < right);
-}
-
 // size must be an odd number
 // modifies provided array
 static uint16_t median(uint16_t *begin, size_t size) {
-    qsort(begin, size, 2, compare_u16);
+    // do not use qsort for smaller code size`
+    for (size_t i = 0; i < size - 1; i++) {
+        for (size_t j = 0; j < size - i - 1; j++) {
+            if (begin[j] > begin[j + 1]) {
+                uint16_t temp = begin[j];
+                begin[j] = begin[j + 1];
+                begin[j + 1] = temp;
+            }
+        }
+    }
     return begin[size / 2];
 }
 
