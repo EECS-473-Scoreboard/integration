@@ -21,14 +21,14 @@ typedef struct {
     int data_size;
 } queue_t;
 
-static uint8_t EventBuf[PACKET_SIZE];
 static uint8_t uartBuf[MAX_EVENTS * PACKET_SIZE];
-static size_t bytes_rcvd = 0;
+static size_t uart_write_head = 0;
+static bool uart_started = false;
+
+static uint8_t EventBuf[PACKET_SIZE];
 static queue_t que;
 
 void init_wearable() {
-    __HAL_RCC_HSEM_CLK_ENABLE();
-    HAL_UART_Receive_IT(&huart7, uartBuf, 1);
     que.data_size = 0;
     que.Head = que.events;
     que.Tail = que.events;
@@ -83,26 +83,38 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart != &huart7)
         return;
 
-    HAL_UART_Receive_IT(&huart7, &uartBuf[bytes_rcvd++], 1);
+    uart_write_head = (uart_write_head + 1) % sizeof(uartBuf);
+    HAL_UART_Receive_IT(&huart7, &uartBuf[uart_write_head], 1);
 }
 
 wearable_event_t poll_wearable() {
     static bool receiving = false;
     static size_t packet_progress = 0;
 
-    for (size_t i = 0; i < bytes_rcvd; i++) {
-        uint8_t b = uartBuf[i];
+    static size_t last_head = 0;
+    if (!uart_started) {
+        HAL_UART_Receive_IT(&huart7, uartBuf, 1);
+        uart_started = true;
+    }
+
+    while (last_head != uart_write_head) {
+        uint8_t b = uartBuf[last_head];
         EventBuf[packet_progress++] = b;
         if (receiving) {
             if (b == PACKET_END) {
                 if (packet_progress == PACKET_SIZE) {
                     push_back();
-                } else {
-                    receiving = false;
                 }
+                // packet ended, either successfully or early
+                receiving = false;
                 packet_progress = 0;
+            } else if (b == PACKET_START) {
+                // previously received bytes are garbage, force restart
+                receiving = true;
+                packet_progress = 1;
             } else {
                 if (packet_progress == PACKET_SIZE) {
+                    // packet too long
                     receiving = false;
                     packet_progress = 0;
                 }
@@ -114,8 +126,9 @@ wearable_event_t poll_wearable() {
                 packet_progress = 0;
             }
         }
+
+        last_head = (last_head + 1) % sizeof(uartBuf);
     }
-    bytes_rcvd = 0;
 
     wearable_event_t event;
     if (front().id == 0 && front().data == 0) {
