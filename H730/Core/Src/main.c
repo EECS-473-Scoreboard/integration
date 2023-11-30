@@ -154,6 +154,8 @@ int main(void) {
     while (1) {
         main_menu_state_t *main_menu_state;
         game_screen_state_t *game_screen_state;
+        sound_screen_state_t *sound_screen_state;
+        score_screen_state_t *score_screen_state;
         switch (current_scr) {
         case MAIN_MENU:
             main_menu_state = main_menu_ready();
@@ -170,6 +172,13 @@ int main(void) {
             }
             break;
         case SOUND_SCR:
+            sound_screen_state = sound_screen_ready();
+            if (sound_screen_state->ready_state == SOUND_SCR_GO_MENU) {
+                lv_scr_load(main_menu);
+                sound_screen_state->ready_state = SOUND_SCR_STAY;
+                current_scr = MAIN_MENU;
+            }
+            break;
         case GAME_SCR:
             game_screen_state = game_screen_ready();
             if (game_screen_state->ready_state == GAME_SCR_GO_MENU) {
@@ -177,12 +186,19 @@ int main(void) {
                 game_screen_state->ready_state = GAME_SCR_STAY;
                 current_scr = MAIN_MENU;
             } else if (game_screen_state->ready_state == GAME_SCR_GO_SCORE) {
+                score_screen_init(main_menu_ready());
                 lv_scr_load(score_screen);
                 game_screen_state->ready_state = GAME_SCR_STAY;
                 current_scr = SCORE_SCR;
             }
             break;
         case SCORE_SCR:
+            score_screen_state = score_screen_ready();
+            if (score_screen_state->ready_state == SCORE_SCR_GO_GAME) {
+                lv_scr_load(game_screen);
+                score_screen_state->ready_state = SCORE_SCR_STAY;
+                current_scr = GAME_SCR;
+            }
             break;
         }
 
@@ -219,8 +235,8 @@ void SystemClock_Config(void) {
     while (!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {
     }
 
-    /** Initializes the RCC Oscillators according to the specified parameters
-     * in the RCC_OscInitTypeDef structure.
+    /** Initializes the RCC Oscillators according to the specified
+     * parameters in the RCC_OscInitTypeDef structure.
      */
     RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
     RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
@@ -291,7 +307,8 @@ void PeriphCommonClock_Config(void) {
  */
 void Error_Handler(void) {
     /* USER CODE BEGIN Error_Handler_Debug */
-    /* User can add his own implementation to report the HAL error return state
+    /* User can add his own implementation to report the HAL error return
+     * state
      */
     __disable_irq();
     while (1) {

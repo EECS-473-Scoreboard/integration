@@ -2,6 +2,26 @@
 #include "common.h"
 
 static lv_obj_t *Ret;
+static score_screen_state_t state;
+static lv_obj_t *table;
+
+void score_screen_init(main_menu_state_t *menu_state) {
+    state.main_menu_state = menu_state;
+    state.ready_state = SCORE_SCR_STAY;
+
+    // TODO: SD I/O
+
+    lv_table_set_cell_value(table, 1, 0, menu_state->p1_name);
+    lv_table_set_cell_value(table, 2, 0, menu_state->p2_name);
+}
+
+static void btn_pressed(lv_event_t *e) {
+    lv_obj_t *btn = lv_event_get_target(e);
+
+    if (btn == Ret) {
+        state.ready_state = SCORE_SCR_GO_GAME;
+    }
+}
 
 static void draw_part_event_cb(lv_event_t *e) {
     lv_obj_t *obj = lv_event_get_target(e);
@@ -50,15 +70,12 @@ void score_screen_build(lv_obj_t *scr) {
     lv_obj_set_style_text_align(title, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(title, LV_ALIGN_CENTER, 0, -360);
 
-    lv_obj_t *table = lv_table_create(scr);
+    table = lv_table_create(scr);
     lv_table_set_cell_value(table, 0, 0, "Name");
     lv_table_set_cell_value(table, 0, 1, "W/L \%");
     lv_table_set_cell_value(table, 0, 2, "# won");
-    lv_table_set_cell_value(table, 1, 0, "Zach");
-    lv_table_set_cell_value(table, 1, 1, "0xDEAD");
-    lv_table_set_cell_value(table, 2, 0, "Richard");
-    lv_table_set_cell_value(table, 1, 2, "0xBEEF");
-    // lv_obj_set_height(table,400);
+
+    lv_obj_set_height(table, 400);
     lv_obj_set_pos(table, 3, 100);
     lv_obj_set_height(table, 500);
 
@@ -66,6 +83,9 @@ void score_screen_build(lv_obj_t *scr) {
                         NULL);
 
     Ret = lv_btn_create(scr);
-    lv_obj_set_pos(Ret, 50, 600);
+    lv_obj_align(Ret, LV_ALIGN_CENTER, 0, 240);
     set_ret_btn_style(Ret);
+    lv_obj_add_event_cb(Ret, btn_pressed, LV_EVENT_CLICKED, NULL);
 }
+
+score_screen_state_t *score_screen_ready(void) { return &state; }
