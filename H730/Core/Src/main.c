@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "bdma.h"
 #include "dma.h"
 #include "gpio.h"
 #include "ltdc.h"
@@ -33,6 +34,7 @@
 #include "game_screen.h"
 #include "lcd.h"
 #include "main_menu.h"
+#include "premade_waves.h"
 #include "score_screen.h"
 #include "sound_screen.h"
 #include "wearable.h"
@@ -140,15 +142,22 @@ int main(void) {
     /* Initialize all configured peripherals */
     MX_GPIO_Init();
     MX_DMA_Init();
-    MX_LTDC_Init();
+    MX_BDMA_Init();
     MX_SAI4_Init();
-    MX_ADC1_Init();
+    MX_LTDC_Init();
     MX_ADC3_Init();
+    MX_ADC1_Init();
     /* USER CODE BEGIN 2 */
+    load_waves();
     seven_seg_init();
     init_wearable();
     init_touch();
     init_display();
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, 0);
+    for (int i = 0; i < 10; i++) {
+        play_wave(low_freq);
+    }
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, 1);
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -245,8 +254,8 @@ void SystemClock_Config(void) {
     while (!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {
     }
 
-    /** Initializes the RCC Oscillators according to the specified
-     * parameters in the RCC_OscInitTypeDef structure.
+    /** Initializes the RCC Oscillators according to the specified parameters
+     * in the RCC_OscInitTypeDef structure.
      */
     RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
     RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;

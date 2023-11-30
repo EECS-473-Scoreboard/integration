@@ -1,5 +1,6 @@
 #include "score.h"
 #include "7Seg.h"
+#include "premade_waves.h"
 #include "scoreboard_cfg.h"
 
 static uint8_t score[NUM_PLAYERS];
