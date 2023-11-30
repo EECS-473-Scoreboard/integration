@@ -30,7 +30,7 @@ static queue_t que;
 
 void init_wearable() {
     // make sure noises from BLE ESP have passed
-    HAL_Delay(10);
+    HAL_Delay(500);
     MX_UART7_Init();
     que.data_size = 0;
     que.Head = que.events;
