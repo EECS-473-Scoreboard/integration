@@ -1,5 +1,5 @@
-// #include "7Seg.h"
 #include "score.h"
+#include "7Seg.h"
 #include "scoreboard_cfg.h"
 
 static uint8_t score[NUM_PLAYERS];
@@ -14,37 +14,21 @@ void init_score() {
         overrides[i].left_bitmap = 0;
         overrides[i].right_bitmap = 0;
     }
+    display_score();
 }
 
 void display_score() {
     /* check for overrides */
-    for (int8_t i = NUM_PLAYERS - 1; i > 0; i--) {
+    for (int8_t i = 0; i < NUM_PLAYERS; i++) {
         if (overrides[i].overridden) {
-            // send_data(overrides[i].right_bitmap);
-            // send_data(overrides[i].left_bitmap);
+            change_digit(2 * i, overrides[i].left_bitmap);
+            change_digit(2 * i + 1, overrides[i].right_bitmap);
         } else {
-            uint8_t right_digit = score[i] % 10;
-            uint8_t left_digit = score[i] / 10;
-            // display_number(right_digit);
-            // display_number(left_digit);
+            change_digit(2 * i, get_bitmap(score[i] / 10));
+            change_digit(2 * i + 1, get_bitmap(score[i] % 10));
         }
     }
-    /* Flush the additional driver on scoreboard pcb for now */
-    // send_data(0x00);
-}
-
-/* Display a value on display temporarily */
-void display_value(uint8_t val, uint32_t ms) {
-    uint8_t right_digit = val % 10;
-    uint8_t left_digit = val / 10;
-
-    /* TODO: Do some sort of efficient sleep while waiting to disable the
-     * temporary number */
-    for (int8_t i = 0; i < NUM_PLAYERS; i++) {
-        // display_number(right_digit);
-        // display_number(left_digit);
-    }
-    // send_data(0x00);
+    start_display_saved();
 }
 
 /* Get the current score */

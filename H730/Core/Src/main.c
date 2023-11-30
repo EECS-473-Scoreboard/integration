@@ -27,6 +27,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "7Seg.h"
 #include "common.h"
 #include "game_screen.h"
 #include "lcd.h"
@@ -142,6 +143,7 @@ int main(void) {
     MX_ADC1_Init();
     MX_ADC3_Init();
     /* USER CODE BEGIN 2 */
+    seven_seg_init();
     init_wearable();
     init_touch();
     init_display();
@@ -184,6 +186,7 @@ int main(void) {
             break;
         }
 
+        seven_seg_pollMainFunction(HAL_GetTick());
         lv_timer_handler();
         // lv_disp_drv_t drv;
         // lv_indev_data_t data;

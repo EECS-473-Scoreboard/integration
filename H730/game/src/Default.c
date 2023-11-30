@@ -3,7 +3,8 @@
 #include "score.h"
 
 static const uint8_t target_scores[] = {7, 11, 21, 99};
-static const uint8_t num_target_scores = sizeof(target_scores) / sizeof(target_scores[0]);
+static const uint8_t num_target_scores =
+    sizeof(target_scores) / sizeof(target_scores[0]);
 static uint8_t target_score_idx = 0;
 
 /* Increment Score by one */
@@ -39,8 +40,9 @@ void Default_button3(player_t player) {
 
     /* TODO: Play score target change sound effect */
 
-    /* Print new value to 7Seg Displays for 1 second */
-    display_value(target_scores[target_score_idx], 1000);
+    /* TODO: Print new value to 7Seg Displays for 1 second */
+    // display_
+    // start_blink(, 1000);
 
     /* Reset scores */
     set_score(player, 0);
@@ -49,6 +51,4 @@ void Default_button3(player_t player) {
 }
 
 /* Reset score */
-void Default_button4(player_t player) {
-    reset_score();
-}
+void Default_button4(player_t player) { reset_score(); }
