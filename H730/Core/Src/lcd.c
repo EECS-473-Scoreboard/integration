@@ -1,6 +1,9 @@
 #include "lcd.h"
 #include "common.h"
+#include "game_screen.h"
 #include "main_menu.h"
+#include "score_screen.h"
+#include "sound_screen.h"
 #include "wearable.h"
 
 #include "stm32h7xx_hal_def.h"
@@ -20,6 +23,9 @@ static lv_disp_draw_buf_t lvgl_buf;
 static lv_color_t draw_buf[LCD_RENDER_WIDTH * LCD_RENDER_HEIGHT / 10];
 
 lv_obj_t *main_menu;
+lv_obj_t *sound_screen;
+lv_obj_t *score_screen;
+lv_obj_t *game_screen;
 
 static void read_wearable(lv_indev_drv_t *_, lv_indev_data_t *data) {
     static uint32_t old_bits;
@@ -45,13 +51,8 @@ static void read_wearable(lv_indev_drv_t *_, lv_indev_data_t *data) {
     data->key = old_bits;
 }
 
-static void broadcast_wearable_event(struct _lv_indev_drv_t *_, uint8_t code) {
-    if (code != LV_EVENT_KEY)
-        return;
-    wearable_event_t event = {.bits = lv_indev_get_key(lv_indev_get_act())};
-
-    lv_event_send(main_menu, SC_EVENT_WEARABLE, event.word);
-}
+// defined in main.c to set broadcast destination to current_scr
+extern void broadcast_wearable_event(struct _lv_indev_drv_t *_, uint8_t code);
 
 void init_display() {
     // point LTDC to framebuffer
@@ -110,6 +111,12 @@ void init_display() {
     // reuse the default screen for main menu
     main_menu = lv_scr_act();
     main_menu_build(main_menu);
+    sound_screen = lv_obj_create(NULL);
+    sound_screen_build(sound_screen);
+    score_screen = lv_obj_create(NULL);
+    score_screen_build(score_screen);
+    game_screen = lv_obj_create(NULL);
+    game_screen_build(game_screen);
 
     lv_group_t *g = lv_group_create();
     lv_indev_set_group(wearable_indev, g);

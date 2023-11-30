@@ -28,8 +28,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "common.h"
+#include "game_screen.h"
 #include "lcd.h"
 #include "main_menu.h"
+#include "score_screen.h"
+#include "sound_screen.h"
 #include "wearable.h"
 
 /* USER CODE END Includes */
@@ -52,6 +55,18 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+extern lv_obj_t *main_menu;
+extern lv_obj_t *sound_screen;
+extern lv_obj_t *score_screen;
+extern lv_obj_t *game_screen;
+
+static enum : char {
+    MAIN_MENU,
+    SOUND_SCR,
+    GAME_SCR,
+    SCORE_SCR
+} current_scr = MAIN_MENU;
+
 uint32_t SC_EVENT_WEARABLE;
 /* USER CODE END PV */
 
@@ -59,7 +74,29 @@ uint32_t SC_EVENT_WEARABLE;
 void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 /* USER CODE BEGIN PFP */
+void broadcast_wearable_event(struct _lv_indev_drv_t *_, uint8_t code) {
+    if (code != LV_EVENT_KEY)
+        return;
+    wearable_event_t event = {.bits = lv_indev_get_key(lv_indev_get_act())};
 
+    lv_obj_t *target_scr;
+    switch (current_scr) {
+    case MAIN_MENU:
+        target_scr = main_menu;
+        break;
+    case SOUND_SCR:
+        target_scr = sound_screen;
+        break;
+    case GAME_SCR:
+        target_scr = game_screen;
+        break;
+    case SCORE_SCR:
+        target_scr = score_screen;
+        break;
+    }
+
+    lv_event_send(target_scr, SC_EVENT_WEARABLE, event.word);
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -116,7 +153,45 @@ int main(void) {
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
+        main_menu_state_t *main_menu_state;
+        game_screen_state_t *game_screen_state;
+        switch (current_scr) {
+        case MAIN_MENU:
+            main_menu_state = main_menu_ready();
+            if (main_menu_state->ready_state == MAIN_MENU_GO_GAME) {
+                game_screen_init(main_menu_state);
+                lv_scr_load(game_screen);
+                main_menu_reset();
+                main_menu_state->ready_state = MAIN_MENU_STAY;
+                current_scr = GAME_SCR;
+            } else if (main_menu_state->ready_state == MAIN_MENU_GO_SOUND) {
+                lv_scr_load(sound_screen);
+                main_menu_state->ready_state = MAIN_MENU_STAY;
+                current_scr = SOUND_SCR;
+            }
+            break;
+        case SOUND_SCR:
+        case GAME_SCR:
+            game_screen_state = game_screen_ready();
+            if (game_screen_state->ready_state == GAME_SCR_GO_MENU) {
+                lv_scr_load(main_menu);
+                game_screen_state->ready_state = GAME_SCR_STAY;
+                current_scr = MAIN_MENU;
+            } else if (game_screen_state->ready_state == GAME_SCR_GO_SCORE) {
+                lv_scr_load(score_screen);
+                game_screen_state->ready_state = GAME_SCR_STAY;
+                current_scr = SCORE_SCR;
+            }
+            break;
+        case SCORE_SCR:
+            break;
+        }
+
         lv_timer_handler();
+        // lv_disp_drv_t drv;
+        // lv_indev_data_t data;
+        // read_touch(&drv, &data);
+        // fb[data.point.y * LCD_RENDER_WIDTH + data.point.x] = 0xFE;
         HAL_Delay(5);
         /* USER CODE END WHILE */
 

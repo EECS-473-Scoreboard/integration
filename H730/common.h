@@ -21,8 +21,13 @@ typedef union {
 } wearable_event_t;
 #define NO_WEARABLE_EVENT 0
 
+#define WEARABLE_ACT_0 0x3032
+#define WEARABLE_ACT_1 0x3033
+#define WEARABLE_ACT_2 0x3034
+#define WEARABLE_ACT_3 0x3035
+
 typedef enum : char {
-    VOLLEYBALL,
+    PINGPONG,
     CORNHOLE,
     TENNIS
 } game_t;

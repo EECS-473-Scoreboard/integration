@@ -32,6 +32,10 @@ OPT = -Os
 LVGL_DIR = lvgl/src
 # Build path
 BUILD_DIR = build
+# UI path
+UI_DIR = ui/scoreboard/src
+# Game rules path
+GAME_DIR = game/src
 
 ######################################
 # source
@@ -39,7 +43,8 @@ BUILD_DIR = build
 # C sources
 C_SOURCES =  \
 $(shell find $(LVGL_DIR) -type f -name '*.c' -not -path '*/\.*') \
-$(shell find ui/scoreboard/src -type f -name '*.c' -not -path '*/\.*') \
+$(shell find $(UI_DIR) -type f -name '*.c' -not -path '*/\.*') \
+$(shell find $(GAME_DIR) -type f -name '*.c' -not -path '*/\.*') \
 Core/Src/wearable.c \
 Core/Src/lcd.c \
 Core/Src/main.c \
@@ -142,6 +147,7 @@ C_INCLUDES =  \
 -I. \
 -Ilvgl \
 -Iui/scoreboard/inc \
+-Igame/inc \
 -ICore/Inc \
 -IDrivers/STM32H7xx_HAL_Driver/Inc \
 -IDrivers/STM32H7xx_HAL_Driver/Inc/Legacy \

@@ -28,6 +28,62 @@ static lv_obj_t *p1_pair_lbl;
 static lv_obj_t *p2_textarea;
 static lv_obj_t *p2_pair_btn;
 static lv_obj_t *p2_pair_lbl;
+static lv_obj_t *start_btn_lbl;
+static lv_obj_t *keyboard;
+
+static lv_obj_t *keyboard_target;
+static void textarea_pressed(lv_event_t *e) {
+    keyboard_target = lv_event_get_target(e);
+    lv_obj_clear_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
+}
+
+static const char *btnm_map[] = {
+    "A",  "B", "C",  "D", "\n", "E",  "F", "G",  "H",  "\n",   "I", "J",
+    "K",  "L", "\n", "M", "N",  "O",  "P", "\n", "Q",  "R",    "S", "T",
+    "\n", "U", "V",  "W", "X",  "\n", "Y", "Z",  "<-", "OKAY", ""};
+static void keyboard_cb(lv_event_t *e) {
+    lv_obj_t *obj = lv_event_get_target(e);
+    uint32_t id = lv_btnmatrix_get_selected_btn(obj);
+
+    if (id == 26) {
+        lv_textarea_del_char(keyboard_target);
+    } else if (id == 27) {
+        lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_textarea_add_text(keyboard_target,
+                             lv_btnmatrix_get_btn_text(obj, id));
+    }
+}
+
+static void start_btn_pressed(lv_event_t *_) {
+    if (menu_state != IDLE) {
+        lv_label_set_text(start_btn_lbl, "Still pairing");
+        return;
+    }
+
+    if (state.wearable_1 == NO_WEARABLE || state.wearable_2 == NO_WEARABLE) {
+        lv_label_set_text(start_btn_lbl, "Device not paired");
+        return;
+    }
+
+    if (state.p1_name[0] == 0 || state.p2_name[0] == 0) {
+        lv_label_set_text(start_btn_lbl, "Player name missing");
+        return;
+    }
+
+    for (size_t i = 0; i < MAX_NAME_LEN; i++) {
+        if (state.p1_name[i] != state.p2_name[i]) {
+            // names field populated and different, everything ready
+            state.ready_state = MAIN_MENU_GO_GAME;
+            return;
+        }
+        if (state.p1_name[i] == 0) {
+            // every char is the same till \0, duplicate names
+            break;
+        }
+    }
+    lv_label_set_text(start_btn_lbl, "Player names identical");
+}
 
 // implement sprintf(s, "0x%4X", w) with a small footprint
 static char *word_to_hex(uint16_t w) {
@@ -131,6 +187,8 @@ inline static void set_pair_btn_style(lv_obj_t *btn) {
 void main_menu_build(lv_obj_t *scr) {
     state.wearable_1 = NO_WEARABLE;
     state.wearable_2 = NO_WEARABLE;
+    state.ready_state = MAIN_MENU_STAY;
+    state.game = CORNHOLE;
     menu_state = IDLE;
 
     lv_obj_set_style_bg_color(scr, COLOR_GREY, LV_PART_MAIN);
@@ -143,6 +201,8 @@ void main_menu_build(lv_obj_t *scr) {
     lv_obj_align(title, LV_ALIGN_CENTER, 0, -360);
 
     p1_textarea = lv_textarea_create(scr);
+    lv_obj_add_event_cb(p1_textarea, textarea_pressed, LV_EVENT_CLICKED, NULL);
+    state.p1_name = lv_textarea_get_text(p1_textarea);
     set_textarea_style(p1_textarea);
     lv_obj_set_pos(p1_textarea, 12, 84);
     lv_obj_t *p1_label = lv_label_create(scr);
@@ -158,6 +218,8 @@ void main_menu_build(lv_obj_t *scr) {
     lv_obj_align_to(p1_pair_lbl, p1_pair_btn, LV_ALIGN_BOTTOM_MID, 0, 40);
 
     p2_textarea = lv_textarea_create(scr);
+    lv_obj_add_event_cb(p2_textarea, textarea_pressed, LV_EVENT_CLICKED, NULL);
+    state.p2_name = lv_textarea_get_text(p2_textarea);
     set_textarea_style(p2_textarea);
     lv_obj_set_pos(p2_textarea, 12, 186);
     lv_obj_t *p2_label = lv_label_create(scr);
@@ -171,4 +233,31 @@ void main_menu_build(lv_obj_t *scr) {
     p2_pair_lbl = lv_label_create(scr);
     lv_label_set_text(p2_pair_lbl, "<NONE>");
     lv_obj_align_to(p2_pair_lbl, p2_pair_btn, LV_ALIGN_BOTTOM_MID, 0, 40);
+
+    lv_obj_t *start_btn = lv_btn_create(scr);
+    lv_obj_add_event_cb(start_btn, start_btn_pressed, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_width(start_btn, 360);
+    lv_obj_set_height(start_btn, 200);
+    lv_obj_set_pos(start_btn, 20, 580);
+    start_btn_lbl = lv_label_create(start_btn);
+    lv_obj_center(start_btn_lbl);
+    lv_label_set_text(start_btn_lbl, "START!!!");
+
+    keyboard = lv_btnmatrix_create(lv_scr_act());
+    lv_btnmatrix_set_map(keyboard, btnm_map);
+    lv_obj_align(keyboard, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_content_width(keyboard, 360);
+    lv_obj_set_content_height(keyboard, 500);
+    lv_obj_align(keyboard, LV_ALIGN_CENTER, 0, 130);
+    lv_obj_add_event_cb(keyboard, keyboard_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_flag(keyboard, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(keyboard, LV_OBJ_FLAG_CLICK_FOCUSABLE);
 }
+
+void main_menu_reset() {
+    state.ready_state = MAIN_MENU_STAY;
+    menu_state = IDLE;
+    lv_label_set_text(start_btn_lbl, "START!!!");
+}
+
+main_menu_state_t *main_menu_ready() { return &state; }
