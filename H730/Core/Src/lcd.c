@@ -108,6 +108,8 @@ void init_display() {
     touch_drv.read_cb = read_touch;
     lv_indev_drv_register(&touch_drv);
 
+    SC_EVENT_BUTTON = lv_event_register_id();
+
     // reuse the default screen for main menu
     main_menu = lv_scr_act();
     main_menu_build(main_menu);

@@ -12,6 +12,8 @@ typedef struct {
 
 // event code registered by main code, triggered on wearable packets
 extern uint32_t SC_EVENT_WEARABLE;
+// event code registered by main code, triggered on button presses
+extern uint32_t SC_EVENT_BUTTON;
 
 void game_screen_build(lv_obj_t* scr);
 game_screen_state_t* game_screen_ready(void);

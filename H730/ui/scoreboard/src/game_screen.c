@@ -1,8 +1,11 @@
 #include "game_screen.h"
+#include "button.h"
 #include "common.h"
 #include "score.h"
 
 static game_screen_state_t state;
+
+static lv_obj_t *self_scr;
 
 static lv_obj_t *game_name_lbl;
 static lv_obj_t *p1_name_lbl;
@@ -97,6 +100,31 @@ static void wearable_packet_rcvd(lv_event_t *e) {
     }
 }
 
+static void button_pressed(lv_event_t *e) {
+    button_t button = (button_t)(uintptr_t)(e->param);
+    switch (button) {
+    case BUTTON_NONE:
+        break;
+    case BUTTON_0:
+        state.game->button2(PLAYER_2);
+        break;
+    case BUTTON_1:
+        state.game->button1(PLAYER_2);
+        break;
+    case BUTTON_2:
+        init_score();
+        break;
+    case BUTTON_3:
+        state.game->button1(PLAYER_1);
+        break;
+    case BUTTON_4:
+        state.game->button2(PLAYER_1);
+        break;
+    }
+
+    render_scores();
+}
+
 void game_screen_init(main_menu_state_t *menu_state) {
     state.main_menu_state = menu_state;
     state.ready_state = GAME_SCR_STAY;
@@ -129,6 +157,16 @@ static void btn_pressed(lv_event_t *e) {
         state.ready_state = GAME_SCR_GO_MENU;
     } else if (btn == ScoreScreenBtn) {
         state.ready_state = GAME_SCR_GO_SCORE;
+    } else if (btn == BTN_1) {
+        lv_event_send(self_scr, SC_EVENT_BUTTON, (void *)(uintptr_t)BUTTON_3);
+    } else if (btn == BTN_2) {
+        lv_event_send(self_scr, SC_EVENT_BUTTON, (void *)(uintptr_t)BUTTON_4);
+    } else if (btn == BTN_3) {
+        lv_event_send(self_scr, SC_EVENT_BUTTON, (void *)(uintptr_t)BUTTON_1);
+    } else if (btn == BTN_4) {
+        lv_event_send(self_scr, SC_EVENT_BUTTON, (void *)(uintptr_t)BUTTON_0);
+    } else if (btn == BTN_5) {
+        lv_event_send(self_scr, SC_EVENT_BUTTON, (void *)(uintptr_t)BUTTON_2);
     }
 }
 
@@ -167,9 +205,12 @@ static void align_table_cb(lv_event_t *e) {
 }
 
 void game_screen_build(lv_obj_t *scr) {
+    self_scr = scr;
+
     lv_obj_set_style_bg_color(scr, COLOR_GREY, LV_PART_MAIN);
 
     lv_obj_add_event_cb(scr, wearable_packet_rcvd, SC_EVENT_WEARABLE, NULL);
+    lv_obj_add_event_cb(scr, button_pressed, SC_EVENT_BUTTON, NULL);
 
     game_name_lbl = lv_label_create(scr);
     lv_obj_set_style_text_align(game_name_lbl, LV_TEXT_ALIGN_CENTER, 0);

@@ -46,6 +46,7 @@ $(shell find $(LVGL_DIR) -type f -name '*.c' -not -path '*/\.*') \
 $(shell find $(UI_DIR) -type f -name '*.c' -not -path '*/\.*') \
 $(shell find $(GAME_DIR) -type f -name '*.c' -not -path '*/\.*') \
 Core/Src/7Seg.c \
+Core/Scr/button.c \
 Core/Src/wearable.c \
 Core/Src/lcd.c \
 Core/Src/main.c \
