@@ -29,6 +29,9 @@ void display_score();
 /* Get the current score */
 int get_score(player_t player);
 
+// 1 for game ended, 0 otherwise
+int get_win();
+
 /* Set the score */
 void set_score(player_t player, uint8_t val);
 

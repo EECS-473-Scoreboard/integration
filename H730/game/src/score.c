@@ -3,11 +3,13 @@
 #include "scoreboard_cfg.h"
 
 static uint8_t score[NUM_PLAYERS];
+static int win;
 
 override_t overrides[NUM_PLAYERS];
 
 /* Initialize Score Private Members */
 void init_score() {
+    win = 0;
     for (uint8_t i = 0; i < NUM_PLAYERS; i++) {
         score[i] = 0;
         overrides[i].overridden = 0;
@@ -35,6 +37,8 @@ void display_score() {
 int get_score(player_t player) {
     return player < NUM_PLAYERS ? score[player] : -1;
 }
+
+int get_win() { return win; }
 
 /* Set the score */
 void set_score(player_t player, uint8_t val) {
@@ -65,8 +69,8 @@ void clear_display(player_t player) { overrides[player].overridden = 0; }
 /* TODO: play the provided win sound effect, notify the UI of completed game, */
 /* update SD card database, 'dance' the display, reset score values */
 void set_winner(player_t player) {
-    for (uint8_t i = 0; i < NUM_PLAYERS; i++)
-        score[i] = 0;
+    win = 1;
+    start_blink(HAL_GetTick(), 5000);
 }
 
 /* TODO: play the provided win sound effect, notify the UI of completed game, */

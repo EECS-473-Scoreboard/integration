@@ -8,6 +8,8 @@
             ;                                                                  \
     }
 
+#define BLINK_INTERVAL 500
+
 // all pins are GPIOD
 #define SCLK_PIN GPIO_PIN_3
 #define SCLK_PORT GPIOD
@@ -70,13 +72,13 @@ static seven_seg_result_t ll_seven_seg_writedata() {
         send_data(digits[i]);
     }
     send_data(digits[4]);
-    cur_job = SEVEN_SEG_FREE;
     return SEVEN_SEG_FINISHED;
 }
 
 static seven_seg_result_t ll_seven_seg_blink(int time) {
     if (time > time_of_blink_stop) {
         screen_blank = false;
+        cur_job = SEVEN_SEG_FREE;
         return ll_seven_seg_writedata();
     } else if (time > time_of_next_blink) {
         if (screen_blank) {
@@ -90,7 +92,7 @@ static seven_seg_result_t ll_seven_seg_blink(int time) {
             send_data(SCOREBOARD_INDICATOR);
             screen_blank = true;
         }
-        time_of_next_blink = time + 100;
+        time_of_next_blink = time + BLINK_INTERVAL;
     }
     return SEVEN_SEG_PENDING;
 }
@@ -100,6 +102,7 @@ seven_seg_result_t seven_seg_pollMainFunction(uint32_t time) {
     switch (cur_job) {
     case SEVEN_SEG_DISPLAY:
         retval = ll_seven_seg_writedata();
+        cur_job = SEVEN_SEG_FREE;
         break;
     case SEVEN_SEG_BLINK:
         retval = ll_seven_seg_blink(time);

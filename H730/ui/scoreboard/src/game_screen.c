@@ -91,6 +91,10 @@ static void wearable_packet_rcvd(lv_event_t *e) {
     }
 
     render_scores();
+
+    if (get_win()) {
+        state.ready_state = GAME_SCR_GO_MENU;
+    }
 }
 
 void game_screen_init(main_menu_state_t *menu_state) {
