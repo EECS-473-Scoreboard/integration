@@ -64,6 +64,20 @@ static void start_btn_pressed(lv_event_t *_) {
         return;
     }
 
+    switch (lv_roller_get_selected(game_roller)) {
+    case 0:
+        state.game = PINGPONG;
+        break;
+    case 1:
+        state.game = CORNHOLE;
+        break;
+    case 2:
+        state.game = TENNIS;
+        break;
+    default:
+        break;
+    }
+
     if (state.wearable_1 == NO_WEARABLE || state.wearable_2 == NO_WEARABLE) {
         lv_label_set_text(start_btn_lbl, "Device not paired");
         return;
@@ -195,7 +209,6 @@ void main_menu_build(lv_obj_t *scr) {
     state.wearable_1 = NO_WEARABLE;
     state.wearable_2 = NO_WEARABLE;
     state.ready_state = MAIN_MENU_STAY;
-    state.game = CORNHOLE;
     menu_state = IDLE;
 
     lv_obj_set_style_bg_color(scr, COLOR_GREY, LV_PART_MAIN);
@@ -245,7 +258,7 @@ void main_menu_build(lv_obj_t *scr) {
     lv_roller_set_options(game_roller,
                           "Ping Pong\n"
                           "Cornhole\n"
-                          "Tennis\n",
+                          "Tennis",
                           LV_ROLLER_MODE_INFINITE);
     lv_roller_set_visible_row_count(game_roller, 3);
     lv_obj_set_pos(game_roller, 20, 350);
