@@ -40,6 +40,14 @@ GAME_DIR = game/src
 ######################################
 # source
 ######################################
+
+# FATFS/App/fatfs.c
+# FATFS/Target/bsp_driver_sd.c
+# FATFS/Target/sd_diskio.c
+# $(shell find Middlewares/Third_Party/FatFs/src -type f -name '*.c' -not -path '*/\.*')
+# Middlewares/Third_Party/FatFs/src/option/syscall.c
+# Core/Src/sdcard_driver.c
+
 # C sources
 C_SOURCES =  \
 $(shell find $(LVGL_DIR) -type f -name '*.c' -not -path '*/\.*') \
@@ -143,6 +151,10 @@ C_DEFS =  \
 
 # AS includes
 AS_INCLUDES = 
+
+# -IFATFS/App
+# -IFATFS/Target
+# -IMiddlewares/Third_Party/FatFs/src
 
 # C includes
 C_INCLUDES =  \
