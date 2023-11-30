@@ -12,6 +12,7 @@
 #include "lvgl/src/misc/lv_txt.h"
 #include "lvgl/src/widgets/lv_btn.h"
 #include "lvgl/src/widgets/lv_label.h"
+#include "lvgl/src/widgets/lv_roller.h"
 #include "lvgl/src/widgets/lv_textarea.h"
 
 static main_menu_state_t state;
@@ -28,6 +29,8 @@ static lv_obj_t *p1_pair_lbl;
 static lv_obj_t *p2_textarea;
 static lv_obj_t *p2_pair_btn;
 static lv_obj_t *p2_pair_lbl;
+static lv_obj_t *game_roller;
+static lv_obj_t *sound_btn;
 static lv_obj_t *start_btn_lbl;
 static lv_obj_t *keyboard;
 
@@ -166,6 +169,10 @@ static void pair_btn_pressed(lv_event_t *e) {
     }
 }
 
+static void sound_btn_pressed(lv_event_t *_) {
+    state.ready_state = MAIN_MENU_GO_SOUND;
+}
+
 inline static void set_textarea_style(lv_obj_t *ta) {
     lv_textarea_set_one_line(ta, true);
     lv_textarea_set_max_length(ta, MAX_NAME_LEN);
@@ -233,6 +240,27 @@ void main_menu_build(lv_obj_t *scr) {
     p2_pair_lbl = lv_label_create(scr);
     lv_label_set_text(p2_pair_lbl, "<NONE>");
     lv_obj_align_to(p2_pair_lbl, p2_pair_btn, LV_ALIGN_BOTTOM_MID, 0, 40);
+
+    game_roller = lv_roller_create(scr);
+    lv_roller_set_options(game_roller,
+                          "Ping Pong\n"
+                          "Cornhole\n"
+                          "Tennis\n",
+                          LV_ROLLER_MODE_INFINITE);
+    lv_roller_set_visible_row_count(game_roller, 3);
+    lv_obj_set_pos(game_roller, 20, 350);
+    lv_obj_t *game_roller_title = lv_label_create(scr);
+    lv_label_set_text(game_roller_title, "Game:");
+    lv_obj_align_to(game_roller_title, game_roller, LV_ALIGN_TOP_MID, 0, -40);
+
+    sound_btn = lv_btn_create(scr);
+    lv_obj_add_event_cb(sound_btn, sound_btn_pressed, LV_EVENT_CLICKED, NULL);
+    lv_obj_set_width(sound_btn, 150);
+    lv_obj_set_height(sound_btn, 100);
+    lv_obj_set_pos(sound_btn, 225, 350);
+    lv_obj_t *sound_btn_lbl = lv_label_create(sound_btn);
+    lv_obj_center(sound_btn_lbl);
+    lv_label_set_text(sound_btn_lbl, "Sound FX");
 
     lv_obj_t *start_btn = lv_btn_create(scr);
     lv_obj_add_event_cb(start_btn, start_btn_pressed, LV_EVENT_CLICKED, NULL);
