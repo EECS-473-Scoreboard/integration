@@ -12,9 +12,11 @@ void Tennis_button1(player_t player) {
     case 0: /* Intentional Fallthrough */
     case 15:
         modify_score(player, 15);
+        display_score();
         break;
     case 30:
         set_score(player, 40);
+        display_score();
         break;
     case 40:
         if (get_score(OTHER_PLAYER) == 40) {
@@ -23,6 +25,7 @@ void Tennis_button1(player_t player) {
             override_display(player, ADVANTAGE_BITMAP_L, ADVANTAGE_BITMAP_R);
             /* Display '  ' on opponent's display */
             override_display(OTHER_PLAYER, CLEAR_BITMAP_L, CLEAR_BITMAP_R);
+            display_score();
         } else if (get_score(OTHER_PLAYER) == 45) {
             /* Remove display overrides if present */
             clear_display(player);
@@ -30,6 +33,7 @@ void Tennis_button1(player_t player) {
             /* Update Scores */
             set_score(player, 40);
             set_score(OTHER_PLAYER, 40);
+            display_score();
         } else {
             set_winner(player);
         }
@@ -60,14 +64,17 @@ void Tennis_button2(player_t player) {
         set_score(player, 40);
         break;
     }
+    display_score();
 }
 
 /* Reset Score */
 void Tennis_button3(player_t player) {
     reset_score();
+    display_score();
 }
 
 /* Reset Score */
 void Tennis_button4(player_t player) {
     reset_score();
+    display_score();
 }

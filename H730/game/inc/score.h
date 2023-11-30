@@ -6,12 +6,12 @@
 #include "types.h"
 
 /* Bitmaps for displaying 'Ad' on the 7 segment displays */
-#define ADVANTAGE_BITMAP_L 0x00
-#define ADVANTAGE_BITMAP_R 0x01
+#define ADVANTAGE_BITMAP_L 0b11111001
+#define ADVANTAGE_BITMAP_R 0b11010011
 
 /* Bitmaps for displaying '  ' on the 7 segment displays */
-#define CLEAR_BITMAP_L 0x02
-#define CLEAR_BITMAP_R 0x03
+#define CLEAR_BITMAP_L 0x00
+#define CLEAR_BITMAP_R 0x00
 
 typedef struct Override {
     uint8_t overridden;
