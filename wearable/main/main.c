@@ -130,8 +130,15 @@ static void PinSetLow(){
 
 static void main_poll() {
     PinSetHigh();
+    nimble_port_stop();
+    nimble_port_deinit();
+
     esp_light_sleep_start();
+
+    nimble_port_init();
+    nimble_port_freertos_init(ble_spp_server_host_task);
     PinSetLow();
+
     char str[40];
     uint32_t com = 1; //For now com is just a number 1 offset from the button nums
     if(low1) com = 2;
@@ -176,6 +183,11 @@ void app_main(void) {
     gpio_reset_pin(INPUT_PIN_B1);
     gpio_set_direction(INPUT_PIN_B1, GPIO_MODE_INPUT);
     esp_sleep_enable_gpio_wakeup();
+
+    // enable low power light sleep
+    // https://github.com/espressif/esp-idf/issues/11858
+    // by the time of coding, a modification in esp lib must be made
+    esp_sleep_cpu_retention_init();
 
     /* Initialize NVS — it is used to store PHY calibration data */
     nvs_flash_init();
